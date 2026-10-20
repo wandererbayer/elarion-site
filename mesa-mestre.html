@@ -73,6 +73,10 @@
           <p class="rotulo-cena">Status ao vivo</p>
           <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Heróis em mesa</h2>
           <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.9rem;" id="fonte-herois"></p>
+          <p class="sync-barra" id="sync-barra">
+            <span id="sync-estado">Atualizando a cada 7s</span>
+            <button type="button" class="btn-sync" id="btn-sync">Pausar</button>
+          </p>
           <div id="lista-herois"></div>
           <button type="button" class="btn btn-secondary btn-block btn-sm mt-1" onclick="carregarHerois()">
             Atualizar status
@@ -203,14 +207,19 @@
        turma joga na mesma máquina) e a aba Progresso da planilha
        (alunos jogando de casa).
        ============================================================ */
-    function carregarHerois() {
+    function carregarHerois(silencioso) {
       const campanhaId = Campanhas.idAtiva();
       herois = elencoDaCampanha(campanhaId);
-      desenhaListaHerois('elenco da campanha');
+      /* No refresh automatico nao redesenhamos com o elenco "cru" antes da
+         planilha chegar: isso faria a lista piscar de 7 em 7 segundos. */
+      if (!silencioso) desenhaListaHerois('elenco da campanha');
       desenharFeitos();
 
-      lerDoGoogleSheets('progresso').then(linhas => {
-        if (!linhas.length) return;
+      return lerDoGoogleSheets('progresso').then(linhas => {
+        if (!linhas.length) {
+          if (silencioso) desenhaListaHerois('elenco da campanha');
+          return;
+        }
 
         /* A planilha guarda uma linha por encontro resolvido, de TODAS as
            campanhas. Duas regras mantêm a mesa limpa:
@@ -360,10 +369,82 @@
 
     Tutorial.instalar('mesa', PASSOS_MESA, '#btn-tutorial');
 
+    /* ============================================================
+       ATUALIZACAO AO VIVO
+       ------------------------------------------------------------
+       O site e estatico (GitHub Pages) e o backend e uma planilha via
+       Apps Script: nao existe push do servidor para o navegador. Entao a
+       mesa do professor busca o progresso de tempos em tempos (polling).
+
+       Tres cuidados para nao estourar a cota do Apps Script:
+       - PAUSA_MS de 7s: perto do "tempo real" na percepcao da aula, mas
+         ~8 chamadas por minuto, nao 60.
+       - Nunca duas buscas ao mesmo tempo (flag buscando).
+       - Com a aba em segundo plano o relogio para; ao voltar, busca na hora.
+       ============================================================ */
+    const PAUSA_MS = 7000;
+    let relogioSync = null;
+    let buscando = false;
+    let pausadoPeloProfessor = false;
+
+    function marcarSync(texto) {
+      const el = document.getElementById('sync-estado');
+      if (el) el.textContent = texto;
+    }
+
+    function horaAgora() {
+      return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function buscarAgora() {
+      if (buscando) return;
+      buscando = true;
+      marcarSync('Buscando...');
+      Promise.resolve(carregarHerois(true))
+        .then(() => marcarSync('Atualizado as ' + horaAgora()))
+        .catch(() => marcarSync('Sem conexao com a planilha — tentando de novo'))
+        .then(() => { buscando = false; });
+    }
+
+    function ligarSync() {
+      if (relogioSync || pausadoPeloProfessor) return;
+      relogioSync = setInterval(buscarAgora, PAUSA_MS);
+    }
+
+    function desligarSync() {
+      if (!relogioSync) return;
+      clearInterval(relogioSync);
+      relogioSync = null;
+    }
+
+    document.getElementById('btn-sync').addEventListener('click', (ev) => {
+      pausadoPeloProfessor = !pausadoPeloProfessor;
+      ev.target.textContent = pausadoPeloProfessor ? 'Retomar' : 'Pausar';
+      if (pausadoPeloProfessor) {
+        desligarSync();
+        marcarSync('Pausado');
+      } else {
+        ligarSync();
+        buscarAgora();
+      }
+    });
+
+    /* Aba escondida (professor trocou para o slide, por exemplo): o relogio
+       para para nao gastar cota a toa, e volta a buscar quando a mesa aparece. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        desligarSync();
+      } else if (!pausadoPeloProfessor) {
+        ligarSync();
+        buscarAgora();
+      }
+    });
+
     desenharSeletorCampanhas();
     desenharCampanha();
     desenharCheckpoints();
     carregarHerois();
+    ligarSync();
   </script>
 </body>
 </html>

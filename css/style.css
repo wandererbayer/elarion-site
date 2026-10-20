@@ -1728,3 +1728,52 @@ tbody tr:hover td { background: rgba(255, 255, 255, 0.03); }
   margin-top: 0.35rem;
   min-height: 1rem;
 }
+
+/* ==========================================================================
+   MESA DO MESTRE — BARRA DE ATUALIZAÇÃO AO VIVO
+   O professor precisa saber se o painel ainda está buscando a planilha ou
+   se congelou. O ponto pulsa enquanto o relógio está rodando.
+   ========================================================================== */
+.sync-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0 0 0.8rem;
+  padding: 0.35rem 0.6rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.sync-barra #sync-estado { display: flex; align-items: center; gap: 0.45rem; }
+.sync-barra #sync-estado::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: sync-pulso 2s ease-in-out infinite;
+}
+.btn-sync {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.18rem 0.6rem;
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-sync:hover { background: var(--accent); color: var(--bg); }
+@keyframes sync-pulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-barra #sync-estado::before { animation: none; }
+}
