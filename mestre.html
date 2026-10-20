@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Mestre — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mestre.html" class="logo">Painel do Mestre</a>
+    <nav>
+      <a href="mesa-mestre.html">Mesa ao Vivo</a>
+      <a href="index.html" onclick="Estado.limparTudo()">Sair</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA 7 — PAINEL DO MESTRE (PROFESSOR)
+       Duas partes:
+       1) Lista de alunos e progresso — em produção real, estes dados
+          viriam da planilha do Google Sheets (aba "Acessos"/"Progresso"),
+          lida através de buscarAlunosDaPlanilha() (ver comentário abaixo).
+          Como não há garantia de que o professor já configurou a URL
+          do Apps Script, mostramos dados de EXEMPLO quando a planilha
+          ainda não está conectada — assim o painel nunca fica vazio
+          ou quebrado durante a demonstração/avaliação.
+       2) Formulário para criar uma quest nova — qualquer professor,
+          de qualquer disciplina, pode usar esse formulário para
+          cadastrar seus próprios desafios, sem mexer em código.
+       ========================================================== -->
+  <main class="container largo">
+    <div class="painel-grid">
+
+    <!-- ==========================================================
+         CAMPANHAS
+         Uma campanha é a turma + a história + o elenco. O professor
+         pode manter várias salvas (uma por turma, ou uma de reserva)
+         e trocar qual está em uso. Trocar não apaga nada: as fichas
+         dos alunos continuam salvas no navegador.
+         ========================================================== -->
+    <div class="card">
+      <p class="rotulo-cena">Campanhas</p>
+      <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Campanha em uso</h2>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.9rem;">
+        Tudo nesta página — história, checkpoints e elenco — pertence à campanha selecionada aqui.
+      </p>
+
+      <div class="form-group">
+        <label for="campo-campanha-ativa">Selecionada</label>
+        <select id="campo-campanha-ativa" onchange="ativarCampanha(this.value)"></select>
+      </div>
+
+      <details class="bloco-dobravel" id="bloco-exemplo">
+        <summary>Carregar uma aventura pronta</summary>
+        <p style="font-size:0.84rem; color:var(--text-muted); margin:0.7rem 0 0.9rem; line-height:1.55;">
+          Duas campanhas completas, em níveis diferentes. Cada uma entra como campanha nova:
+          nada do que você já criou é alterado.
+        </p>
+
+        <div class="aventura-pronta">
+          <span class="selo-nivel iniciante">Iniciante · 10 a 12 anos</span>
+          <h3>O Sino de Vilarim</h3>
+          <p>
+            A campanha de entrada, no formato de aventura-tutorial: cada um dos seis encontros
+            apresenta uma regra nova, na ordem em que ela importa. Dificuldades entre 9 e 12,
+            inimigos leves e um encontro por território — as insígnias chegam rápido, que é o
+            que segura uma turma iniciante. Conteúdo de 5º e 6º ano.
+          </p>
+          <button type="button" class="btn btn-primary btn-block" onclick="carregarTutorial()">
+            Instalar e usar
+          </button>
+        </div>
+
+        <div class="aventura-pronta">
+          <span class="selo-nivel intermediaria">Intermediária · 12 a 15 anos</span>
+          <h3>O Último Inverno de Pedravasta</h3>
+          <p>
+            Uma cidade que queima conhecimento para sobreviver ao inverno e um arquivista que
+            trancou o Arquivo "para proteger". Oito encontros com NPCs e inimigos, quatro itens
+            e um julgamento sem resposta pronta no fim. Proporção, porcentagem, área e frações —
+            conteúdo de 7º a 9º ano.
+          </p>
+          <button type="button" class="btn btn-primary btn-block" onclick="carregarExemplo()">
+            Instalar e usar
+          </button>
+        </div>
+
+        <div class="aventura-pronta">
+          <span class="selo-nivel avancada">Avançada · 15 a 17 anos</span>
+          <h3>A Última Colheita de Aurélia</h3>
+          <p>
+            Uma cidade que acabou com a fome usando um mecanismo que decide quem recebe o quê —
+            e que há doze anos dá 18% menos a um bairro, a partir de dados que carregam o
+            preconceito antigo da cidade. A turma entra como auditora. Média contra mediana,
+            crescimento exponencial, amostragem e viés, falácias de argumento — Ensino Médio.
+            Nenhum encontro tem resposta moralmente limpa.
+          </p>
+          <button type="button" class="btn btn-primary btn-block" onclick="carregarAvancada()">
+            Instalar e usar
+          </button>
+        </div>
+      </details>
+
+      <details class="bloco-dobravel">
+        <summary>Criar campanha nova</summary>
+        <div class="form-group" style="margin-top:0.8rem;">
+          <label for="campo-nova-campanha">Nome</label>
+          <input type="text" id="campo-nova-campanha" placeholder="Ex: 7º A — Elarion 2026">
+        </div>
+        <div class="form-group">
+          <label for="campo-nova-turma">Turma</label>
+          <input type="text" id="campo-nova-turma" placeholder="Ex: 7A-2026">
+        </div>
+        <div class="form-group">
+          <label for="campo-importar-de">Importar elenco de</label>
+          <select id="campo-importar-de"></select>
+        </div>
+        <label class="linha-check">
+          <input type="checkbox" id="campo-copiar-texto">
+          <span>Copiar também história e checkpoints (os checkpoints voltam a zero)</span>
+        </label>
+        <button type="button" class="btn btn-primary btn-block mt-1" onclick="criarCampanha()">
+          Criar e usar
+        </button>
+      </details>
+
+      <details class="bloco-dobravel">
+        <summary>Elenco da campanha</summary>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin:0.7rem 0; line-height:1.55;">
+          Quem está jogando <strong>esta campanha</strong>. Cada aluno tem um herói por
+          campanha, então remover alguém daqui não mexe nas fichas dele em outras aventuras.
+          Marque para remover do elenco ou para zerar a ficha.
+        </p>
+        <div id="lista-elenco"></div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="removerSelecionados()">
+            Remover do elenco
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="zerarSelecionados()">
+            Zerar fichas
+          </button>
+        </div>
+      </details>
+
+      <details class="bloco-dobravel">
+        <summary>Apagar esta campanha</summary>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin:0.7rem 0;">
+          Apaga a história, os checkpoints e o elenco desta campanha. As fichas dos alunos
+          permanecem salvas e voltam se eles forem matriculados de novo.
+        </p>
+        <button type="button" class="btn btn-outline btn-sm" onclick="apagarCampanha()">
+          Apagar campanha
+        </button>
+      </details>
+    </div>
+    <div class="card">
+      <h2 style="font-size:1.05rem; margin-bottom:0.9rem;">Criar Encontro</h2>
+      <form id="form-nova-quest" onsubmit="return criarNovaQuest(event)">
+        <div class="form-group">
+          <label for="campo-titulo-quest">Título da missão</label>
+          <input type="text" id="campo-titulo-quest" required placeholder="Ex: O Enigma da Ponte">
+        </div>
+        <div class="form-group">
+          <label for="campo-narrativa-quest">Narrativa (introdução em tom de RPG)</label>
+          <textarea id="campo-narrativa-quest" rows="2" required placeholder="Descreva a cena..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="campo-pergunta-quest">Pergunta</label>
+          <textarea id="campo-pergunta-quest" rows="2" required placeholder="Digite a pergunta de conteúdo..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Alternativas (marque a correta)</label>
+          <div class="alt-list">
+            <div class="alt-item"><input type="radio" name="alt-correta" value="a" checked><input type="text" id="alt-a" placeholder="Alternativa A" required></div>
+            <div class="alt-item"><input type="radio" name="alt-correta" value="b"><input type="text" id="alt-b" placeholder="Alternativa B" required></div>
+            <div class="alt-item"><input type="radio" name="alt-correta" value="c"><input type="text" id="alt-c" placeholder="Alternativa C" required></div>
+            <div class="alt-item"><input type="radio" name="alt-correta" value="d"><input type="text" id="alt-d" placeholder="Alternativa D" required></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="campo-territorio-quest">Território</label>
+          <select id="campo-territorio-quest"></select>
+        </div>
+
+        <h3 style="font-size:0.95rem; margin:1.2rem 0 0.6rem;">Quem está na cena</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.8rem;">
+          Opcional, mas é o que separa um encontro de uma pergunta solta. O NPC dá o
+          problema; o inimigo cobra o erro.
+        </p>
+
+        <div class="form-group">
+          <label for="campo-npc-nome">NPC — nome</label>
+          <input type="text" id="campo-npc-nome" placeholder="Ex: Vareth, o Guarda-Chaves">
+        </div>
+        <div class="form-group">
+          <label for="campo-npc-fala">NPC — o que ele diz</label>
+          <textarea id="campo-npc-fala" rows="2" placeholder="A fala que apresenta o problema..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="campo-inimigo-nome">Inimigo — nome</label>
+          <input type="text" id="campo-inimigo-nome" placeholder="Ex: Devorador de Passos">
+        </div>
+        <div class="form-group">
+          <label for="campo-inimigo-fala">Inimigo — provocação</label>
+          <textarea id="campo-inimigo-fala" rows="2" placeholder="O que ele diz ao aparecer..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="campo-inimigo-golpe">Inimigo — o que acontece quando o aluno erra</label>
+          <input type="text" id="campo-inimigo-golpe" placeholder="Ex: As raízes se enroscam nos seus pés.">
+        </div>
+        <div class="form-group">
+          <label for="campo-inimigo-dano">Inimigo — dano em Determinação</label>
+          <select id="campo-inimigo-dano">
+            <option value="1">1 — leve</option>
+            <option value="2" selected>2 — padrão</option>
+            <option value="3">3 — perigoso</option>
+          </select>
+        </div>
+
+        <h3 style="font-size:0.95rem; margin:1.2rem 0 0.6rem;">Abordagens</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.8rem;">
+          Os caminhos que o aluno pode tentar. Cada um usa um atributo e tem a sua
+          dificuldade. Deixe em branco para o jogo gerar três abordagens padrão.
+        </p>
+        <div id="campos-abordagens"></div>
+
+        <button type="submit" class="btn btn-primary btn-block mt-1">Criar Encontro</button>
+      </form>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.7rem;">
+        Esta quest é salva neste navegador (localStorage) e, se a planilha do Google estiver
+        configurada, também é enviada para lá — assim ela pode ser revisada ou reaproveitada depois
+        (ver README.md, seção "Configurar o Google Sheets").
+      </p>
+    </div>
+    <!-- ==========================================================
+         HISTÓRIA DA CAMPANHA
+         É aqui que o professor escreve a narrativa que dá sentido às
+         missões: o título da campanha, o prólogo (lido pela turma na
+         primeira aula) e um capítulo por território. O Códex do aluno
+         passa a mostrar esse texto no lugar da lore padrão.
+         ========================================================== -->
+    <div class="card">
+      <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">História da Campanha</h2>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.9rem;">
+        O que você escrever aqui aparece no Códex dos alunos. Deixe em branco para usar
+        a lenda padrão de Elarion.
+      </p>
+
+      <form id="form-campanha" onsubmit="return salvarCampanha(event)">
+        <div class="form-group">
+          <label for="campo-campanha-titulo">Título da campanha</label>
+          <input type="text" id="campo-campanha-titulo" placeholder="Ex: A Sombra sobre o Vale">
+        </div>
+        <div class="form-group">
+          <label for="campo-campanha-prologo">Prólogo</label>
+          <textarea id="campo-campanha-prologo" rows="4" placeholder="A cena de abertura: onde a turma está, o que ameaça o reino, o que se espera dela..."></textarea>
+        </div>
+
+        <h3 style="font-size:0.95rem; margin:1.1rem 0 0.6rem;">Capítulos por território</h3>
+        <div id="campos-capitulos"></div>
+
+        <h3 style="font-size:0.95rem; margin:1.2rem 0 0.4rem;">Checkpoints da campanha</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.7rem;">
+          As cenas-chave, na ordem em que você pretende conduzir. Aparecem na Mesa ao Vivo
+          para você marcar conforme a turma avança.
+        </p>
+        <div id="campos-checkpoints"></div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="adicionarCheckpoint()">
+          + Adicionar checkpoint
+        </button>
+
+        <button type="submit" class="btn btn-primary btn-block mt-2">Salvar História</button>
+      </form>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.7rem;" id="aviso-campanha"></p>
+    </div>
+
+    <!-- ==========================================================
+         LOJA — itens que o professor cria
+         É o que dá função ao ouro: sem itens, acumular moeda é só
+         pontuação. Cada efeito abaixo é entendido pelo motor do jogo
+         (ver Recursos.usarItem em core.js).
+         ========================================================== -->
+    <div class="card">
+      <p class="rotulo-cena">Economia</p>
+      <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Criar Item da Loja</h2>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.9rem;">
+        O item aparece na Loja de Elarion para todos os alunos deste navegador.
+      </p>
+
+      <form id="form-item" onsubmit="return criarItem(event)">
+        <div class="form-group">
+          <label for="campo-item-nome">Nome do item</label>
+          <input type="text" id="campo-item-nome" required placeholder="Ex: Bússola de Ilda">
+        </div>
+        <div class="form-group">
+          <label for="campo-item-icone">Ícone (um emoji)</label>
+          <input type="text" id="campo-item-icone" maxlength="4" placeholder="🧭" value="🎒">
+        </div>
+        <div class="form-group">
+          <label for="campo-item-desc">Descrição</label>
+          <textarea id="campo-item-desc" rows="2" required placeholder="O que ele faz, em linguagem de jogo..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="campo-item-efeito">Efeito</label>
+          <select id="campo-item-efeito">
+            <option value="determinacao">Recupera Determinação</option>
+            <option value="inspiracao">Concede Inspiração</option>
+            <option value="bonus-rolagem">Bônus na próxima rolagem</option>
+            <option value="eliminar-alternativa">Apaga uma alternativa errada</option>
+            <option value="anular-falha-critica">Anula a próxima falha crítica</option>
+            <option value="vantagem">Vantagem na próxima rolagem</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="campo-item-valor">Intensidade do efeito</label>
+          <input type="number" id="campo-item-valor" value="2" min="1" max="6">
+        </div>
+        <div class="form-group">
+          <label for="campo-item-preco">Preço em ouro</label>
+          <input type="number" id="campo-item-preco" value="40" min="5" max="500">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Criar Item</button>
+      </form>
+      <div id="lista-itens-criados" class="mt-1"></div>
+    </div>
+
+      <div id="area-feedback"></div>
+
+      <div class="card" style="margin-top:1.3rem;">
+        <p class="rotulo-cena">Vitrine</p>
+        <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Avaliações deste navegador</h2>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.8rem; line-height:1.5;">
+          A tela inicial mostra as avaliações da planilha <em>e</em> as que ficaram salvas
+          neste computador. Se você apagou a aba Feedback e um depoimento de teste
+          continua aparecendo, é esta cópia local. Apagar aqui não mexe na planilha.
+        </p>
+        <p id="contagem-avaliacoes" style="font-size:0.82rem; margin-bottom:0.8rem;"></p>
+        <button type="button" class="btn btn-outline btn-sm" onclick="limparAvaliacoesLocais()">
+          Apagar avaliações locais
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/campanha-exemplo.js"></script>
+  <script src="js/campanha-tutorial.js"></script>
+  <script src="js/campanha-avancada.js"></script>
+  <script>
+    exigirSessao('mestre');
+
+    /** Preenche o <select> de territórios a partir de TERRITORIOS (dados-jogo.js). */
+    function montarSelectTerritorios() {
+      const select = document.getElementById('campo-territorio-quest');
+      select.innerHTML = TERRITORIOS.map(t => `<option value="${t.id}">${t.icone} ${t.nome}</option>`).join('');
+    }
+
+    /* ---------- Abordagens do encontro ---------- */
+
+    /** Três linhas de abordagem: texto, atributo e dificuldade. */
+    function montarCamposAbordagens() {
+      const opcoesAtributo = Object.keys(ATRIBUTOS)
+        .map(k => `<option value="${k}">${ATRIBUTOS[k].nome}</option>`).join('');
+
+      document.getElementById('campos-abordagens').innerHTML = [0, 1, 2].map(i => `
+        <div class="form-group" style="border-left:2px solid var(--border); padding-left:0.8rem;">
+          <label for="ab-texto-${i}">Abordagem ${i + 1}</label>
+          <input type="text" id="ab-texto-${i}" placeholder="Ex: Deduzir pela lógica antes de agir">
+          <div style="display:flex; gap:0.5rem; margin-top:0.4rem;">
+            <select id="ab-atributo-${i}" style="flex:1;">${opcoesAtributo}</select>
+            <input type="number" id="ab-cd-${i}" value="12" min="5" max="20" style="width:90px;"
+                   title="Dificuldade (CD)">
+          </div>
+        </div>`).join('');
+    }
+
+    /** Lê as abordagens preenchidas; se nenhuma veio, gera três padrão. */
+    function lerAbordagens(territorioId) {
+      const abordagens = [];
+
+      [0, 1, 2].forEach(i => {
+        const texto = document.getElementById('ab-texto-' + i).value.trim();
+        if (!texto) return;
+        abordagens.push({
+          id: 'ab' + i,
+          texto,
+          atributo: document.getElementById('ab-atributo-' + i).value,
+          cd: parseInt(document.getElementById('ab-cd-' + i).value, 10) || 12,
+          sucesso: 'Você segue esse caminho e ele te leva aonde precisava chegar.',
+          falha: 'O caminho não se abre como você esperava.'
+        });
+      });
+
+      if (abordagens.length) return abordagens;
+
+      // Padrão: três ângulos sobre o mesmo problema, com riscos diferentes.
+      const territorio = buscarTerritorio(territorioId);
+      const principal = territorio ? territorio.atributo : 'razao';
+      const outros = Object.keys(ATRIBUTOS).filter(a => a !== principal);
+
+      return [
+        { id: 'ab0', texto: 'Enfrentar o problema de frente, com o que você sabe.',
+          atributo: principal, cd: 12,
+          sucesso: 'Você vai direto ao ponto e funciona.',
+          falha: 'Ir direto nem sempre é ir pelo caminho mais curto.' },
+        { id: 'ab1', texto: 'Observar antes de agir, procurando o que passou batido.',
+          atributo: outros[0], cd: 13,
+          sucesso: 'A paciência entrega o detalhe que faltava.',
+          falha: 'Você observa demais e o momento passa.' },
+        { id: 'ab2', texto: 'Chamar alguém para resolver junto.',
+          atributo: 'harmonia', cd: 11,
+          sucesso: 'Duas cabeças chegam onde uma emperrou.',
+          falha: 'Dividir a dúvida só multiplicou a confusão.' }
+      ];
+    }
+
+    /** Processa o formulário de criação do encontro. */
+    function criarNovaQuest(evento) {
+      evento.preventDefault();
+
+      const territorioId = document.getElementById('campo-territorio-quest').value;
+
+      const novaQuest = {
+        id: 'custom-' + Date.now(),
+        territorioId,
+        titulo: document.getElementById('campo-titulo-quest').value.trim(),
+        narrativa: document.getElementById('campo-narrativa-quest').value.trim(),
+        pergunta: document.getElementById('campo-pergunta-quest').value.trim(),
+        alternativas: [
+          { id: 'a', texto: document.getElementById('alt-a').value.trim() },
+          { id: 'b', texto: document.getElementById('alt-b').value.trim() },
+          { id: 'c', texto: document.getElementById('alt-c').value.trim() },
+          { id: 'd', texto: document.getElementById('alt-d').value.trim() }
+        ],
+        respostaCorreta: document.querySelector('input[name="alt-correta"]:checked').value,
+        abordagens: lerAbordagens(territorioId),
+        xp: 40, ouro: 15
+      };
+
+      // NPC e inimigo entram só se tiverem nome.
+      const npcNome = document.getElementById('campo-npc-nome').value.trim();
+      if (npcNome) {
+        novaQuest.npc = {
+          nome: npcNome,
+          icone: '🧑',
+          fala: document.getElementById('campo-npc-fala').value.trim()
+        };
+      }
+
+      const inimigoNome = document.getElementById('campo-inimigo-nome').value.trim();
+      if (inimigoNome) {
+        novaQuest.inimigo = {
+          nome: inimigoNome,
+          icone: '👹',
+          fala: document.getElementById('campo-inimigo-fala').value.trim(),
+          golpe: document.getElementById('campo-inimigo-golpe').value.trim()
+                 || 'O golpe acerta antes que você reaja.',
+          dano: parseInt(document.getElementById('campo-inimigo-dano').value, 10) || 2
+        };
+      }
+
+      const questsCustomizadas = getQuestsCustomizadas();
+      questsCustomizadas.push(novaQuest);
+      localStorage.setItem(CHAVE_QUESTS_CUSTOM, JSON.stringify(questsCustomizadas));
+
+      registrarNoGoogleSheets('quest', novaQuest);
+
+      mostrarToast('Encontro criado e disponível no território.');
+      document.getElementById('form-nova-quest').reset();
+      montarCamposAbordagens();
+      return false;
+    }
+
+    /* ---------- História da Campanha ---------- */
+
+    /** Desenha um textarea por território, preenchido com o que já foi escrito. */
+    function montarCamposCapitulos() {
+      const campanha = Campanha.get() || {};
+      const capitulos = campanha.capitulos || {};
+      document.getElementById('campos-capitulos').innerHTML = TERRITORIOS.map(t => `
+        <div class="form-group">
+          <label for="cap-${t.id}">${t.icone} ${escaparHTML(t.nome)}</label>
+          <textarea id="cap-${t.id}" rows="3"
+            placeholder="O que acontece neste território nesta campanha?">${escaparHTML(capitulos[t.id] || '')}</textarea>
+        </div>`).join('');
+
+      document.getElementById('campo-campanha-titulo').value = campanha.titulo || '';
+      document.getElementById('campo-campanha-prologo').value = campanha.prologo || '';
+      montarCamposCheckpoints(campanha.checkpoints || []);
+      mostrarAvisoCampanha(campanha.atualizadaEm);
+    }
+
+    /* ---------- Checkpoints ---------- */
+
+    /** Desenha uma linha por checkpoint (título + nota do mestre). */
+    function montarCamposCheckpoints(checkpoints) {
+      const lista = checkpoints.length ? checkpoints : [
+        { titulo: 'Abertura: a turma chega a Elarion', nota: '', concluido: false }
+      ];
+
+      document.getElementById('campos-checkpoints').innerHTML = lista.map((c, i) => `
+        <div class="form-group linha-checkpoint" style="border-left:2px solid var(--border); padding-left:0.8rem;">
+          <label for="cp-titulo-${i}" style="display:flex; align-items:center; gap:0.5rem;">
+            <input type="checkbox" class="cp-remover" title="Marcar para remover ao salvar">
+            <span>Checkpoint ${i + 1}</span>
+          </label>
+          <input type="text" id="cp-titulo-${i}" class="cp-titulo"
+                 value="${escaparHTML(c.titulo || '')}" placeholder="Ex: O conselho rejeita o pedido">
+          <input type="text" id="cp-nota-${i}" class="cp-nota" style="margin-top:0.4rem;"
+                 value="${escaparHTML(c.nota || '')}" placeholder="Nota para você: o que acontece aqui">
+          <input type="hidden" class="cp-concluido" value="${c.concluido ? '1' : ''}">
+        </div>`).join('');
+    }
+
+    /** Acrescenta uma linha vazia, preservando o que já foi digitado. */
+    function adicionarCheckpoint() {
+      const atuais = lerCheckpoints();
+      atuais.push({ titulo: '', nota: '', concluido: false });
+      montarCamposCheckpoints(atuais);
+    }
+
+    /** Lê as linhas da tela, descartando as que ficaram sem título. */
+    function lerCheckpoints() {
+      const titulos = Array.from(document.querySelectorAll('.cp-titulo'));
+      const notas = Array.from(document.querySelectorAll('.cp-nota'));
+      const feitos = Array.from(document.querySelectorAll('.cp-concluido'));
+      const remover = Array.from(document.querySelectorAll('.cp-remover'));
+
+      return titulos.map((campo, i) => ({
+        titulo: campo.value.trim(),
+        nota: notas[i] ? notas[i].value.trim() : '',
+        concluido: Boolean(feitos[i] && feitos[i].value),
+        remover: Boolean(remover[i] && remover[i].checked)
+      })).filter(c => c.titulo && !c.remover)
+         .map(c => ({ titulo: c.titulo, nota: c.nota, concluido: c.concluido }));
+    }
+
+    /** Linha de rodapé dizendo quando a história foi salva pela última vez. */
+    function mostrarAvisoCampanha(quando) {
+      const el = document.getElementById('aviso-campanha');
+      el.textContent = quando
+        ? '✅ Última atualização: ' + new Date(quando).toLocaleString('pt-BR')
+        : 'ℹ️ Nenhuma história salva ainda — o Códex está usando a lenda padrão de Elarion.';
+    }
+
+    /** Lê os campos, salva a campanha e atualiza o aviso. */
+    function salvarCampanha(evento) {
+      evento.preventDefault();
+
+      const capitulos = {};
+      TERRITORIOS.forEach(t => {
+        capitulos[t.id] = document.getElementById('cap-' + t.id).value.trim();
+      });
+
+      const campanha = Campanha.salvar({
+        titulo: document.getElementById('campo-campanha-titulo').value.trim(),
+        prologo: document.getElementById('campo-campanha-prologo').value.trim(),
+        capitulos,
+        checkpoints: lerCheckpoints()
+      });
+
+      mostrarAvisoCampanha(campanha.atualizadaEm);
+      mostrarToast('História salva! Os alunos já veem no Códex.');
+      return false;
+    }
+
+    /* ---------- Itens da loja ---------- */
+
+    /** Grava um item novo na lista que a Loja de Elarion lê. */
+    function criarItem(evento) {
+      evento.preventDefault();
+
+      const item = {
+        id: 'item-' + Date.now(),
+        nome: document.getElementById('campo-item-nome').value.trim(),
+        icone: document.getElementById('campo-item-icone').value.trim() || '🎒',
+        descricao: document.getElementById('campo-item-desc').value.trim(),
+        efeito: document.getElementById('campo-item-efeito').value,
+        valor: parseInt(document.getElementById('campo-item-valor').value, 10) || 1,
+        preco: parseInt(document.getElementById('campo-item-preco').value, 10) || 40
+      };
+
+      const itens = getItensCustomizados();
+      itens.push(item);
+      localStorage.setItem('elarion_itens_customizados', JSON.stringify(itens));
+
+      registrarNoGoogleSheets('item', item);
+
+      mostrarToast(item.icone + ' ' + item.nome + ' está à venda.');
+      document.getElementById('form-item').reset();
+      listarItensCriados();
+      return false;
+    }
+
+    /** Mostra o que já foi criado, para o professor não duplicar. */
+    function listarItensCriados() {
+      const itens = getItensCustomizados();
+      const alvo = document.getElementById('lista-itens-criados');
+
+      if (!itens.length) {
+        alvo.innerHTML = '<p style="font-size:0.8rem; color:var(--text-muted);">'
+          + 'Nenhum item próprio ainda — a loja já vende os seis itens básicos.</p>';
+        return;
+      }
+
+      alvo.innerHTML = itens.map(i => `
+        <div class="item-card">
+          <span class="item-icone-grande">${i.icone}</span>
+          <div class="item-info">
+            <strong>${escaparHTML(i.nome)}</strong>
+            <p class="item-desc">${escaparHTML(i.descricao)}</p>
+          </div>
+          <div class="item-compra"><span class="item-preco">${i.preco}</span></div>
+        </div>`).join('');
+    }
+
+    /* ============================================================
+       GERENCIADOR DE CAMPANHAS
+       ============================================================ */
+
+    /** Preenche o seletor da campanha ativa e o de importação. */
+    function desenharSelectsCampanha() {
+      const lista = Campanhas.lista();
+      const ativa = Campanhas.idAtiva();
+
+      document.getElementById('campo-campanha-ativa').innerHTML = lista.map(c => {
+        const nivel = rotuloDoNivel(c);
+        return `
+        <option value="${c.id}" ${c.id === ativa ? 'selected' : ''}>
+          ${escaparHTML(c.nome)}${c.turma ? ' · ' + escaparHTML(c.turma) : ''}${nivel ? ' — ' + escaparHTML(nivel) : ''}
+        </option>`;
+      }).join('');
+
+      document.getElementById('campo-importar-de').innerHTML =
+        '<option value="">Começar sem elenco</option>'
+        + lista.map(c => `<option value="${c.id}">${escaparHTML(c.nome)} (${(c.jogadores || []).length} aluno(s))</option>`).join('');
+    }
+
+    /** Troca a campanha em uso e recarrega os editores com os dados dela. */
+    function ativarCampanha(id) {
+      Campanhas.definirAtiva(id);
+      montarCamposCapitulos();
+      desenharElenco();
+      mostrarToast('Campanha ativa alterada.');
+    }
+
+    /** Recarrega os editores depois de instalar uma aventura pronta. */
+    function aposInstalar(campanha) {
+      desenharSelectsCampanha();
+      montarCamposCapitulos();
+      desenharElenco();
+      listarItensCriados();
+
+      document.getElementById('bloco-exemplo').open = false;
+      mostrarToast('"' + campanha.nome + '" instalada e em uso.');
+    }
+
+    /** Aventura de entrada, para a primeira partida da turma. */
+    function carregarTutorial() {
+      aposInstalar(instalarCampanhaTutorial());
+    }
+
+    /** Aventura intermediária. */
+    function carregarExemplo() {
+      aposInstalar(instalarCampanhaExemplo());
+    }
+
+    /** Aventura avançada, para Ensino Médio. */
+    function carregarAvancada() {
+      aposInstalar(instalarCampanhaAvancada());
+    }
+
+    function criarCampanha() {
+      const nome = document.getElementById('campo-nova-campanha').value.trim();
+      if (!nome) {
+        mostrarToast('Dê um nome à campanha.');
+        return;
+      }
+
+      Campanhas.criar(nome, {
+        turma: document.getElementById('campo-nova-turma').value.trim(),
+        importarDe: document.getElementById('campo-importar-de').value || null,
+        copiarTexto: document.getElementById('campo-copiar-texto').checked
+      });
+
+      document.getElementById('campo-nova-campanha').value = '';
+      document.getElementById('campo-nova-turma').value = '';
+
+      desenharSelectsCampanha();
+      montarCamposCapitulos();
+      desenharElenco();
+      mostrarToast('Campanha criada e em uso.');
+    }
+
+    function apagarCampanha() {
+      const campanha = Campanhas.ativa();
+      if (!campanha) return;
+      if (!confirm(`Apagar a campanha "${campanha.nome}"? As fichas dos alunos continuam salvas.`)) return;
+
+      Campanhas.remover(campanha.id);
+      desenharSelectsCampanha();
+      montarCamposCapitulos();
+      desenharElenco();
+      mostrarToast('Campanha apagada.');
+    }
+
+    /* ---------- Elenco ---------- */
+
+    /** Uma linha por aluno, com checkbox para as ações em massa. */
+    function desenharElenco() {
+      const elenco = elencoDaCampanha();
+      const alvo = document.getElementById('lista-elenco');
+
+      if (!elenco.length) {
+        const campanha = Campanhas.ativa();
+        const codigo = campanha && campanha.turma
+          ? 'O código desta campanha é <strong>' + escaparHTML(campanha.turma) + '</strong>.'
+          : 'Esta campanha ainda não tem código de turma — defina um ao criá-la para controlar quem entra.';
+
+        alvo.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); line-height:1.55;">'
+          + 'Ninguém matriculado <strong>nesta campanha</strong> ainda. '
+          + 'O aluno entra pela tela de login, escolhe esta campanha no seletor e confirma o código da turma. '
+          + codigo
+          + '</p>';
+        return;
+      }
+
+      alvo.innerHTML = elenco.map(linha => {
+        const p = linha.personagem;
+        const nivel = p ? calcularNivel(p.xp).nivel : '—';
+        const heroi = p && p.nome ? p.nome : 'sem personagem';
+
+        return `
+          <label class="linha-check elenco-linha">
+            <input type="checkbox" class="chk-aluno" value="${escaparHTML(linha.chave)}">
+            <span>
+              <strong>${escaparHTML(linha.jogador.nome)}</strong>
+              <span class="elenco-meta">
+                ${escaparHTML(heroi)} · Nível ${nivel}
+                ${p ? ` · ${p.xp} XP · ${p.ouro} ouro` : ''}
+              </span>
+            </span>
+          </label>`;
+      }).join('');
+    }
+
+    /** Chaves marcadas na lista do elenco. */
+    function selecionados() {
+      return Array.from(document.querySelectorAll('.chk-aluno:checked')).map(c => c.value);
+    }
+
+    function removerSelecionados() {
+      const chaves = selecionados();
+      if (!chaves.length) { mostrarToast('Marque pelo menos um aluno.'); return; }
+      if (!confirm(`Remover ${chaves.length} aluno(s) do elenco? As fichas continuam salvas.`)) return;
+
+      const id = Campanhas.idAtiva();
+      chaves.forEach(chave => Campanhas.removerJogador(id, chave));
+      desenharElenco();
+      mostrarToast('Elenco atualizado.');
+    }
+
+    function zerarSelecionados() {
+      const chaves = selecionados();
+      if (!chaves.length) { mostrarToast('Marque pelo menos um aluno.'); return; }
+      if (!confirm(`Zerar a ficha de ${chaves.length} aluno(s)? XP, ouro e progresso voltam ao zero.`)) return;
+
+      const campanhaId = Campanhas.idAtiva();
+      chaves.forEach(chave => Campanhas.zerarFicha(chave, campanhaId));
+      desenharElenco();
+      mostrarToast('Fichas zeradas — eles recomeçam na próxima entrada.');
+    }
+
+    /* ============================================================
+       TUTORIAL DO PAINEL
+       ============================================================ */
+    const PASSOS_MESTRE = [
+      { titulo: 'Bem-vindo ao Painel do Mestre',
+        texto: 'Aqui você monta a aventura antes da aula: a campanha, a história, os encontros e a loja. '
+             + 'São quatro blocos, de cima para baixo, na ordem em que fazem sentido. '
+             + 'Use Próximo, ou as setas do teclado.' },
+
+      { alvo: '#campo-campanha-ativa',
+        titulo: '1. A campanha é o recipiente',
+        texto: 'Campanha = uma turma + uma história + o elenco de alunos. Tudo o que você editar '
+             + 'nesta página pertence à campanha selecionada aqui. Para dar aula em duas turmas, '
+             + 'crie duas campanhas e troque neste seletor.' },
+
+      { alvo: '#lista-elenco',
+        titulo: 'O elenco se preenche sozinho',
+        texto: 'Cada aluno que faz login entra nesta lista. As caixas de seleção servem para tirar '
+             + 'alguém do elenco ou zerar a ficha de quem quer recomeçar.' },
+
+      { alvo: '#form-nova-quest',
+        titulo: '3. Criar um encontro',
+        texto: 'Um encontro tem cena, abordagens e desafio. Preencha o título, a narrativa e a pergunta: '
+             + 'é o mínimo para funcionar.' },
+
+      { alvo: '#campo-npc-nome',
+        titulo: 'Dê um rosto ao problema',
+        texto: 'O NPC apresenta a situação; o inimigo cobra o erro. É a diferença entre uma pergunta '
+             + 'solta e uma cena de RPG. São opcionais, mas é aqui que o jogo ganha vida.' },
+
+      { alvo: '#campos-abordagens',
+        titulo: 'As abordagens',
+        texto: 'Os caminhos que o aluno pode tentar. Cada um usa um atributo e tem a sua dificuldade (CD): '
+             + '10 é fácil, 15 é médio, 18 é difícil. Deixe em branco e o jogo cria três por você.' },
+
+      { alvo: '#form-campanha',
+        titulo: '4. A história',
+        texto: 'Título, prólogo e um capítulo por território. O que você escrever aqui substitui a lenda '
+             + 'padrão no Códex dos alunos.' },
+
+      { alvo: '#campos-checkpoints',
+        titulo: 'Checkpoints: o seu roteiro',
+        texto: 'As cenas-chave na ordem em que pretende conduzir. Aparecem na Mesa ao Vivo para você '
+             + 'marcar conforme a turma avança — é o seu mapa durante a aula.' },
+
+      { alvo: '#form-item',
+        titulo: '5. A loja',
+        texto: 'Cada item escolhe um dos efeitos que o jogo entende. É isto que faz o ouro valer alguma '
+             + 'coisa: sem itens para comprar, acumular moeda é só pontuação.' },
+
+      { titulo: 'Pronto para a aula',
+        texto: 'Com a campanha montada, abra a Mesa ao Vivo: é a tela que você deixa aberta durante a aula, '
+             + 'com os checkpoints de um lado e o status da turma do outro.' }
+    ];
+
+    Tutorial.instalar('mestre', PASSOS_MESTRE, '#btn-tutorial');
+
+    Feedback.montarFormulario('#area-feedback', 'mestre');
+    mostrarContagemAvaliacoes();
+
+    function mostrarContagemAvaliacoes() {
+      const total = Feedback.todos().length;
+      document.getElementById('contagem-avaliacoes').textContent =
+        total ? total + (total > 1 ? ' avaliações salvas aqui.' : ' avaliação salva aqui.')
+              : 'Nenhuma avaliação salva neste navegador.';
+    }
+
+    function limparAvaliacoesLocais() {
+      if (!confirm('Apagar as avaliações salvas neste navegador? A planilha não é alterada.')) return;
+      const quantos = Feedback.limparLocais();
+      mostrarContagemAvaliacoes();
+      mostrarToast(quantos ? 'Avaliações locais apagadas.' : 'Não havia nada para apagar.');
+    }
+
+    montarSelectTerritorios();
+    desenharSelectsCampanha();
+    montarCamposCapitulos();
+    montarCamposAbordagens();
+    desenharElenco();
+    listarItensCriados();
+  </script>
+</body>
+</html>

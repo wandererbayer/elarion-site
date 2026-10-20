@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crônicas de Elarion — RPG Educativo</title>
+  <meta name="description" content="Um RPG educativo digital para aprender lógica, matemática e valores de cidadania.">
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================================
+       TELA 0 — PÁGINA INICIAL
+       Porta de entrada do site. No celular, tudo empilha numa
+       coluna; a partir de 900px o conteúdo se abre em duas
+       colunas (apresentação à esquerda, como jogar à direita) e
+       as avaliações viram uma faixa de cartões.
+       ========================================================== -->
+  <main class="container largo">
+
+    <!-- Abertura -->
+    <section class="home-hero">
+      <div class="home-hero-texto">
+        <p class="rotulo-cena">RPG educativo digital</p>
+        <!-- A logo é o próprio h1: o texto dentro do SVG mantém o nome
+             acessível a leitores de tela e a buscadores. -->
+        <h1 class="home-titulo-marca">
+          <img src="assets/imagens/logo-elarion.svg" alt="Crônicas de Elarion" class="marca-grande">
+        </h1>
+        <p class="home-subtitulo">
+          Lógica, matemática e cidadania viram aventura. A turma cria heróis, decide
+          como enfrentar cada desafio e rola o d20 na tela — com o professor conduzindo.
+        </p>
+        <div class="home-acoes">
+          <a href="login.html" class="btn btn-primary btn-lg">Jogar</a>
+          <a href="codex.html" class="btn btn-outline btn-lg">Ver o Códex</a>
+        </div>
+
+        <div class="home-nota" id="resumo-avaliacoes"></div>
+      </div>
+
+      <!-- CAPA
+           Basta salvar a arte em assets/imagens/capa-elarion.jpg: a imagem
+           aparece sozinha e o aviso de "sem capa" some. Se o arquivo não
+           existir, o onerror devolve o placeholder — assim a página nunca
+           mostra o ícone de imagem quebrada. -->
+      <figure class="home-capa">
+        <img src="assets/imagens/capa-elarion.jpg"
+             alt="Quatro jovens heróis enfrentam a Sombra do Esquecimento numa sala de aula"
+             onerror="this.closest('.home-capa').classList.add('sem-imagem'); this.remove();">
+        <figcaption class="home-capa-vazia">
+          Salve a arte em <code>assets/imagens/capa-elarion.jpg</code>
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- Três colunas de apresentação -->
+    <section class="home-colunas">
+      <div class="card">
+        <h2 class="home-card-titulo">O que é este RPG</h2>
+        <p class="home-card-texto">
+          Um jogo de interpretação de papéis onde você é o herói da própria aprendizagem.
+          Cada encontro mistura narrativa de fantasia com desafios reais de lógica e
+          matemática — e, como num RPG de mesa, suas ações são decididas na rolagem do dado.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2 class="home-card-titulo">A História</h2>
+        <div class="narrativa" style="margin-bottom:0;">
+          Antes que o Véu se rompesse, Elarion era um só reino, onde o Saber fluía livre
+          entre quatro Pilares. Então a Sombra do Esquecimento rastejou pelas fronteiras —
+          ela não destrói com fogo, ela apaga: apaga respostas, apaga a vontade de perguntar
+          "por quê". Não há herói profetizado. Há você.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="home-card-titulo">Os quatro Pilares</h2>
+        <ul class="lista-pilares">
+          <li><strong>Vale do Saber</strong> — enigmas, números e o que a Razão sustenta</li>
+          <li><strong>Terras Unidas</strong> — convivência, divisão justa e a União</li>
+          <li><strong>Cidade-Jardim</strong> — plantar pensando em quem vem depois</li>
+          <li><strong>Salão da Justiça</strong> — a Lei que protege o fraco do forte</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ==========================================================
+         COMO SE JOGA
+         A dúvida de quem chega não é "o que é um RPG", é "o que eu
+         faço quando a tela abrir". Por isso a seção descreve o loop
+         de um encontro na ordem exata em que ele acontece, e depois
+         explica os dois recursos que mudam o jogo.
+         ========================================================== -->
+    <section class="home-secao">
+      <h2 class="home-secao-titulo">Como se joga</h2>
+      <p class="home-secao-intro">
+        Um encontro acontece em quatro passos, sempre nesta ordem. O dado não decide se
+        você sabe a matéria — decide em que condições você vai enfrentá-la.
+      </p>
+
+      <ol class="passos-jogo">
+        <li class="passo">
+          <span class="passo-num">1</span>
+          <h3>A cena</h3>
+          <p>
+            Alguém está na sua frente: um NPC com um problema, ou um inimigo com uma
+            provocação. Leia a fala — a resposta costuma estar escondida ali.
+          </p>
+        </li>
+
+        <li class="passo">
+          <span class="passo-num">2</span>
+          <h3>A abordagem</h3>
+          <p>
+            Você escolhe <em>como</em> agir. Deduzir pela lógica, pressionar alguém,
+            pedir ajuda, observar o ambiente. Cada caminho usa um atributo diferente e
+            tem a sua própria dificuldade. Não existe caminho errado — existem riscos
+            diferentes, e a sua classe favorece um deles.
+          </p>
+        </li>
+
+        <li class="passo">
+          <span class="passo-num">3</span>
+          <h3>A rolagem</h3>
+          <p>
+            O d20 rola antes da pergunta, com a dificuldade e cada bônus à vista: nada
+            é escondido de você. Tirar 20 apaga uma alternativa errada; falhar deixa o
+            inimigo agir primeiro. O resultado muda a cena, não só o tamanho do prêmio.
+          </p>
+        </li>
+
+        <li class="passo">
+          <span class="passo-num">4</span>
+          <h3>O desafio</h3>
+          <p>
+            Agora sim a pergunta de conteúdo, enfrentada no terreno que a sorte deixou.
+            Acertar resolve a cena e rende XP e ouro. Errar tem preço.
+          </p>
+        </li>
+      </ol>
+
+      <div class="home-colunas" style="margin-top:1.4rem;">
+        <div class="card">
+          <h3 class="home-card-titulo">Determinação</h3>
+          <p class="home-card-texto">
+            É o quanto você aguenta errar antes de recuar. Cada erro consome pontos — e
+            quando ela zera, seu herói volta ao acampamento, perde ouro e tempo, mas não
+            o progresso. Recuar não é derrota: é a cena terminando de outro jeito.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="home-card-titulo">Inspiração</h3>
+          <p class="home-card-texto">
+            A segunda chance existe, mas custa. Você ganha Inspiração resolvendo de
+            primeira ou tirando 20 natural, e gasta para rolar o dado de novo. Por isso
+            não é "tente até acertar": é uma decisão sua, com um recurso que acaba.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 class="home-card-titulo">Ouro e Loja</h3>
+          <p class="home-card-texto">
+            O ouro compra itens que mudam as regras a seu favor: mais Determinação, uma
+            re-rolagem, bônus no dado, vantagem (dois dados, fica o melhor) ou uma
+            alternativa errada apagada. Gastar agora ou guardar para o chefe é com você.
+          </p>
+        </div>
+      </div>
+
+      <div class="card nota-professor">
+        <h3 class="home-card-titulo">Se você é professor</h3>
+        <p class="home-card-texto">
+          Entre como Professor para abrir o Painel do Mestre: lá você escreve a história
+          da campanha, cria encontros com NPCs e inimigos, monta a loja e define os
+          checkpoints da aula. A Mesa ao Vivo é a tela que fica aberta enquanto a turma
+          joga, com o seu roteiro de um lado e o status de cada aluno do outro. Há uma
+          campanha completa pronta para instalar com um clique, se quiser começar jogando.
+        </p>
+        <a href="login.html" class="btn btn-outline btn-sm mt-1">Entrar como Professor</a>
+      </div>
+    </section>
+
+    <!-- Avaliações de 4 e 5 estrelas -->
+    <section id="secao-avaliacoes" style="display:none;">
+      <h2 class="home-secao-titulo">O que dizem quem jogou</h2>
+      <div class="depoimentos" id="lista-avaliacoes"></div>
+    </section>
+
+    <p class="footer-rodape">Crônicas de Elarion — RPG Educativo Digital · Atividade Extensionista</p>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script>
+    /* ============================================================
+       VITRINE DE AVALIAÇÕES
+       Mostra apenas as notas 4 e 5 — as mais baixas interessam ao
+       professor, não a quem está chegando.
+
+       Os depoimentos são ANÔNIMOS: estrelas, comentário e, quando a
+       pessoa quis informar, o nome da escola. Nome de aluno e código
+       de turma ficam apenas no registro do professor; nunca aparecem
+       aqui, porque esta página é pública.
+       ============================================================ */
+
+    function desenharAvaliacoes(lista) {
+      const destaques = lista
+        .filter(f => Number(f.nota) >= 4)
+        .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))
+        .slice(0, 6);
+
+      if (!destaques.length) return;
+
+      document.getElementById('secao-avaliacoes').style.display = 'block';
+      document.getElementById('lista-avaliacoes').innerHTML = destaques.map(f => `
+        <figure class="depoimento">
+          <div class="depoimento-estrelas">${Feedback.estrelasEmTexto(Number(f.nota))}</div>
+          ${f.texto ? `<blockquote>${escaparHTML(f.texto)}</blockquote>` : ''}
+          <figcaption>${f.escola ? escaparHTML(f.escola) : 'Avaliação anônima'}</figcaption>
+        </figure>`).join('');
+    }
+
+    /** Linha de resumo ao lado dos botões: média e quantidade. */
+    function desenharResumo(lista) {
+      if (!lista.length) return;
+      const soma = lista.reduce((t, f) => t + (Number(f.nota) || 0), 0);
+      const media = soma / lista.length;
+
+      document.getElementById('resumo-avaliacoes').innerHTML = `
+        <span class="resumo-estrelas">${Feedback.estrelasEmTexto(Math.round(media))}</span>
+        <span>${media.toFixed(1)} de 5 · ${lista.length} avaliaç${lista.length > 1 ? 'ões' : 'ão'}</span>`;
+    }
+
+    const locais = Feedback.todos();
+    desenharResumo(locais);
+    desenharAvaliacoes(locais);
+
+    // A planilha traz as avaliações de quem jogou em outro computador.
+    lerDoGoogleSheets('feedbacks').then(remotos => {
+      if (!remotos.length) return;
+
+      // A mesma avaliação pode vir das duas fontes: comentário + nota
+      // identificam a repetição sem precisar do nome de ninguém.
+      const vistos = new Set(locais.map(f => f.nota + '|' + (f.texto || '')));
+      const juntos = locais.concat(
+        remotos.filter(f => !vistos.has(f.nota + '|' + (f.texto || '')))
+      );
+
+      desenharResumo(juntos);
+      desenharAvaliacoes(juntos);
+    });
+  </script>
+</body>
+</html>

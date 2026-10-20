@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu Personagem — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mapa.html" class="logo">Elarion</a>
+    <nav>
+      <a href="mapa.html">Mapa</a>
+      <a href="loja.html">Loja</a>
+      <a href="perfil.html" class="ativo">Perfil</a>
+      <a href="codex.html">Códex</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA 5 — PERFIL DO PERSONAGEM
+       Mostra classe, nível (calculado a partir do XP total),
+       barra de progresso, os 4 atributos com seus modificadores,
+       e a grade de badges (conquistas por território).
+       ========================================================== -->
+  <main class="container largo">
+   <div class="ficha-grid">
+
+    <!-- Coluna 1: identidade e recursos -->
+    <div>
+     <div class="text-center">
+      <div class="avatar" id="avatar-classe">🧙‍♂️</div>
+      <h1 id="nome-heroi" style="font-size:1.3rem;"></h1>
+      <p style="color:var(--text-muted); font-size:0.85rem;" id="nome-classe"></p>
+     </div>
+
+     <div class="xp-bar-container">
+      <div class="xp-bar-label">
+        <span id="rotulo-nivel"></span>
+        <span id="rotulo-xp"></span>
+      </div>
+      <div class="xp-bar">
+        <div class="xp-bar-fill" id="barra-xp-fill" style="width:0%;"></div>
+      </div>
+     </div>
+
+    <div class="stats-grid" style="margin-bottom:1.2rem;">
+      <div class="stat-card">
+        <span class="valor" id="total-ouro">0</span>
+        <span class="rotulo">Ouro</span>
+      </div>
+      <div class="stat-card">
+        <span class="valor" id="total-determinacao">0</span>
+        <span class="rotulo">Determinação</span>
+      </div>
+      <div class="stat-card">
+        <span class="valor" id="total-inspiracao">0</span>
+        <span class="rotulo">Inspiração</span>
+      </div>
+    </div>
+
+     <h2 style="font-size:1rem; margin-bottom:0.6rem;">Atributos</h2>
+     <div class="atributos-grid" id="grid-atributos-perfil"></div>
+
+     <a href="mapa.html" class="btn btn-secondary btn-block mt-2">Voltar ao Mapa</a>
+     <button type="button" class="btn btn-outline btn-block mt-1" onclick="recomecarHeroi()">Recomeçar herói</button>
+    </div>
+
+    <!-- Coluna 2: mochila, insígnias e avaliação -->
+    <div>
+     <h2 style="font-size:1rem; margin-bottom:0.6rem;">Mochila</h2>
+     <div id="mochila-perfil" class="prateleira" style="margin-bottom:1.3rem;"></div>
+
+     <h2 style="font-size:1rem; margin-bottom:0.6rem;">Insígnias</h2>
+     <div class="badges-grid" id="grid-badges"></div>
+
+     <div id="area-feedback" class="mt-2"></div>
+    </div>
+
+   </div>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script>
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+
+    function montarPerfil() {
+      if (!personagem) return;
+      const classe = buscarClasse(personagem.classeId);
+
+      document.getElementById('avatar-classe').textContent = classe.icone;
+      document.getElementById('nome-heroi').textContent = personagem.nome;
+      document.getElementById('nome-classe').textContent = `${classe.nome} • ${classe.habilidade}`;
+      document.getElementById('total-ouro').textContent = personagem.ouro;
+
+      // Nível e barra de XP (ver calcularNivel em core.js)
+      const { nivel, xpAtualNoNivel, xpParaProximoNivel } = calcularNivel(personagem.xp);
+      document.getElementById('rotulo-nivel').textContent = `Nível ${nivel}`;
+      document.getElementById('rotulo-xp').textContent = `${xpAtualNoNivel} / ${xpParaProximoNivel} XP`;
+      const percentual = Math.round((xpAtualNoNivel / xpParaProximoNivel) * 100);
+      document.getElementById('barra-xp-fill').style.width = `${percentual}%`;
+
+      // Atributos com modificador (ex: 14 -> +2)
+      const gridAtributos = document.getElementById('grid-atributos-perfil');
+      gridAtributos.innerHTML = Object.entries(ATRIBUTOS).map(([chave, info]) => {
+        const valor = personagem.atributos[chave];
+        const mod = calcularModificador(valor);
+        return `
+          <div class="atributo-box">
+            <div class="valor">${valor} <span style="font-size:0.9rem; color:var(--text-muted);">(${mod >= 0 ? '+' : ''}${mod})</span></div>
+            <div class="nome">${info.nome}</div>
+          </div>`;
+      }).join('');
+
+      // Badges: desbloqueadas (personagem.badges) aparecem coloridas; as demais ficam "bloqueadas".
+      const gridBadges = document.getElementById('grid-badges');
+      gridBadges.innerHTML = BADGES.map(b => {
+        const desbloqueada = personagem.badges.includes(b.id);
+        return `
+          <div class="badge-item ${desbloqueada ? '' : 'bloqueado'}">
+            <span class="icone">${b.icone}</span>
+            <span class="nome">${b.nome}</span>
+          </div>`;
+      }).join('');
+    }
+
+    montarPerfil();
+  </script>
+  <script>
+    Feedback.montarFormulario('#area-feedback', 'aluno');
+
+    /* Recursos novos (Determinação, Inspiração, mochila) na ficha. */
+    (function mostrarRecursosNaFicha() {
+      const heroi = Recursos.normalizar(Estado.getPersonagem());
+      if (!heroi) return;
+
+      document.getElementById('total-determinacao').textContent =
+        heroi.determinacao + '/' + heroi.determinacaoMaxima;
+      document.getElementById('total-inspiracao').textContent = heroi.inspiracao;
+
+      const mochila = Recursos.mochila(heroi);
+      document.getElementById('mochila-perfil').innerHTML = mochila.length
+        ? mochila.map(l => `
+            <div class="item-card guardado">
+              <span class="item-icone-grande">${l.item.icone}</span>
+              <div class="item-info">
+                <strong>${escaparHTML(l.item.nome)} ${l.quantidade > 1 ? '×' + l.quantidade : ''}</strong>
+                <p class="item-desc">${escaparHTML(l.item.descricao)}</p>
+              </div>
+            </div>`).join('')
+        : '<p style="font-size:0.88rem; color:var(--text-muted);">Vazia. A Loja de Elarion troca ouro por vantagem.</p>';
+    })();
+
+    /** Apaga o herói deste jogador e volta para a criação de personagem. */
+    function recomecarHeroi() {
+      if (!confirm('Isto apaga este herói (XP, ouro e badges) e começa um novo. Continuar?')) return;
+      Estado.apagarPersonagem();
+      window.location.href = 'personagem.html';
+    }
+  </script>
+</body>
+</html>

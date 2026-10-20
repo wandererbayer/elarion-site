@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jornada Concluída — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mapa.html" class="logo">🏰 Elarion</a>
+    <nav>
+      <a href="mapa.html">🗺️ Mapa</a>
+      <a href="perfil.html">👤 Perfil</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA 6 — CONCLUSÃO DA JORNADA
+       Exibida quando o jogador concluiu as missões dos 4 territórios.
+       Mostra um resumo final de desempenho.
+       ========================================================== -->
+  <main class="container text-center">
+    <div style="font-size:4rem;" aria-hidden="true">🏆</div>
+    <h1 style="font-size:1.6rem;">Jornada Concluída!</h1>
+    <p style="color:var(--text-muted); margin-bottom:1.2rem;">
+      Você restaurou o equilíbrio de Elarion. Os quatro Pilares voltam a brilhar graças a você.
+    </p>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="valor" id="stat-missoes">0</div><div class="rotulo">Missões</div></div>
+      <div class="stat-card"><div class="valor" id="stat-xp">0</div><div class="rotulo">XP Total</div></div>
+      <div class="stat-card"><div class="valor" id="stat-ouro">0</div><div class="rotulo">Ouro</div></div>
+      <div class="stat-card"><div class="valor" id="stat-badges">0</div><div class="rotulo">Badges</div></div>
+    </div>
+
+    <div class="card" style="text-align:left; margin-bottom:1.3rem;">
+      <h3 style="font-size:1rem; margin-bottom:0.5rem;">📜 Resumo da Jornada</h3>
+      <p style="font-size:0.9rem; color:var(--text-muted);">
+        Você dominou o Vale do Saber, uniu as Terras Unidas, floresceu na Cidade-Jardim e trouxe justiça
+        ao Salão. Elarion está em paz — por enquanto — graças ao seu raciocínio e à sua sorte nos dados.
+      </p>
+    </div>
+
+    <a href="perfil.html" class="btn btn-primary btn-block">Ver Perfil Final</a>
+    <a href="mapa.html" class="btn btn-outline btn-block mt-1">Explorar Novamente</a>
+    <div id="area-feedback" class="mt-2"></div>
+  </main>
+
+  <script src="js/dados-jogo.js">
+    Feedback.montarFormulario('#area-feedback', 'aluno');
+  </script>
+  <script src="js/core.js"></script>
+  <script>
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+
+    if (personagem) {
+      document.getElementById('stat-missoes').textContent = `${personagem.missoesConcluidas.length}/${QUESTS.length}`;
+      document.getElementById('stat-xp').textContent = personagem.xp;
+      document.getElementById('stat-ouro').textContent = personagem.ouro;
+      document.getElementById('stat-badges').textContent = `${personagem.badges.length}/${BADGES.length}`;
+
+      // Concede a badge especial "Lenda de Elarion" se todos os territórios foram concluídos
+      // e ela ainda não tiver sido dada.
+      const todosConcluidos = TERRITORIOS.every(t =>
+        buscarQuestsDoTerritorio(t.id).every(q => personagem.missoesConcluidas.includes(q.id))
+      );
+      const badgeLenda = BADGES.find(b => b.id === 'badge-lenda');
+      if (todosConcluidos && badgeLenda && !personagem.badges.includes(badgeLenda.id)) {
+        personagem.badges.push(badgeLenda.id);
+        Estado.salvarPersonagem(personagem);
+      }
+    }
+  </script>
+</body>
+</html>

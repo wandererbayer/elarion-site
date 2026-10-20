@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loja de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mapa.html" class="logo">Elarion</a>
+    <nav>
+      <a href="mapa.html">Mapa</a>
+      <a href="loja.html" class="ativo">Loja</a>
+      <a href="#" id="btn-tutorial">Tutorial</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="codex.html">Códex</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA — LOJA DE ELARION
+       É aqui que o ouro deixa de ser pontuação e vira decisão:
+       comprar a poção agora ou guardar para o Manto antes do
+       encontro difícil? Os itens vendidos são os de dados-jogo.js
+       mais os que o professor cadastrou no Painel do Mestre.
+       ========================================================== -->
+  <main class="container largo">
+
+    <div class="loja-topo">
+      <div>
+        <p class="rotulo-cena">Mercado do Acampamento</p>
+        <h1 style="font-size:1.4rem;">Loja de Elarion</h1>
+      </div>
+      <div class="bolsa">
+        <span class="bolsa-valor" id="ouro-atual">0</span>
+        <span class="bolsa-rotulo">de ouro</span>
+      </div>
+    </div>
+
+    <div class="narrativa">
+      A tenda cheira a enxofre e pergaminho velho. A mercadora não pergunta seu nome,
+      só olha a bolsa e diz: “O que você levar hoje é o que vai ter lá dentro. Escolha
+      pensando no que ainda não aconteceu.”
+    </div>
+
+    <div id="prateleira" class="prateleira"></div>
+
+    <h2 style="font-size:1.05rem; margin:1.6rem 0 0.7rem;">Sua mochila</h2>
+    <div id="mochila" class="prateleira"></div>
+
+    <a href="mapa.html" class="btn btn-primary btn-block mt-2">Voltar ao Mapa</a>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script>
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+
+    /** Cabeçalho: quanto ouro o herói tem agora. */
+    function desenharBolsa() {
+      document.getElementById('ouro-atual').textContent = personagem.ouro;
+    }
+
+    /** Vitrine: todo item à venda, com o botão desabilitado se faltar ouro. */
+    function desenharPrateleira() {
+      document.getElementById('prateleira').innerHTML = todosOsItens().map(item => {
+        const podeComprar = personagem.ouro >= item.preco;
+        return `
+          <div class="item-card ${podeComprar ? '' : 'sem-ouro'}">
+            <span class="item-icone-grande">${item.icone}</span>
+            <div class="item-info">
+              <strong>${escaparHTML(item.nome)}</strong>
+              <p class="item-desc">${escaparHTML(item.descricao)}</p>
+            </div>
+            <div class="item-compra">
+              <span class="item-preco">${item.preco}</span>
+              <button type="button" class="btn btn-primary btn-sm"
+                      onclick="comprar('${item.id}')" ${podeComprar ? '' : 'disabled'}>
+                Comprar
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    /** Mochila: o que já foi comprado e ainda não foi usado. */
+    function desenharMochila() {
+      const mochila = Recursos.mochila(personagem);
+      const alvo = document.getElementById('mochila');
+
+      if (!mochila.length) {
+        alvo.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">'
+          + 'Vazia. Itens comprados aqui podem ser usados durante um encontro.</p>';
+        return;
+      }
+
+      alvo.innerHTML = mochila.map(linha => `
+        <div class="item-card guardado">
+          <span class="item-icone-grande">${linha.item.icone}</span>
+          <div class="item-info">
+            <strong>${escaparHTML(linha.item.nome)} ${linha.quantidade > 1 ? '×' + linha.quantidade : ''}</strong>
+            <p class="item-desc">${escaparHTML(linha.item.descricao)}</p>
+          </div>
+        </div>`).join('');
+    }
+
+    function comprar(itemId) {
+      if (!Recursos.comprar(personagem, itemId)) return;
+      desenharBolsa();
+      desenharPrateleira();
+      desenharMochila();
+    }
+
+    Tutorial.instalar('loja', [
+      { alvo: '.bolsa',
+        titulo: 'O seu ouro',
+        texto: 'Ganho resolvendo encontros. Quanto melhor a rolagem, maior a recompensa.' },
+
+      { alvo: '#prateleira',
+        titulo: 'O que está à venda',
+        texto: 'Cada item muda uma regra a seu favor: mais Determinação, uma re-rolagem, bônus no dado, '
+             + 'vantagem (dois dados, fica o melhor) ou uma alternativa errada apagada.' },
+
+      { alvo: '#mochila',
+        titulo: 'A mochila',
+        texto: 'O que você comprou fica aqui. Itens são usados DURANTE o encontro, no botão "Abrir a mochila" — '
+             + 'e somem depois de usados.' },
+
+      { titulo: 'A decisão',
+        texto: 'Comprar agora ou guardar para um encontro difícil? Essa escolha é sua, e é ela que transforma '
+             + 'o ouro em algo mais que pontuação.' }
+    ], '#btn-tutorial');
+
+    desenharBolsa();
+    desenharPrateleira();
+    desenharMochila();
+  </script>
+</body>
+</html>

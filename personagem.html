@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criação de Personagem — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================================
+       TELA — CRIAÇÃO DE PERSONAGEM
+       Etapa única: o aluno escolhe uma classe e "rola" os 4
+       atributos (Razão, Harmonia, Natureza, Firmeza), igual à
+       criação de personagem de um RPG de mesa. Os atributos
+       influenciam as rolagens de dado nas missões (core.js).
+       ========================================================== -->
+  <main class="container">
+    <div class="text-center" style="margin-bottom:1.2rem;">
+      <div style="font-size:2.2rem;" aria-hidden="true">✨</div>
+      <h1 style="font-size:1.4rem;">Crie seu Herói</h1>
+      <p style="color:var(--text-muted); font-size:0.9rem;">Escolha uma classe e role seus atributos</p>
+    </div>
+
+    <div class="form-group">
+      <label for="campo-nome-heroi">Nome do seu herói</label>
+      <input type="text" id="campo-nome-heroi" placeholder="Ex: Lyra, a Sábia" required>
+    </div>
+
+    <h3 style="font-size:1rem; margin-bottom:0.6rem;">1. Escolha sua classe</h3>
+    <div class="classes-grid" id="grid-classes">
+      <!-- As 4 classes são geradas dinamicamente pelo script, a partir de CLASSES em dados-jogo.js -->
+    </div>
+
+    <h3 style="font-size:1rem; margin-bottom:0.6rem;">2. Role seus atributos</h3>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">
+      Cada atributo é sorteado com 3 dados de 6 lados (3 a 18), como em jogos de RPG de mesa.
+    </p>
+    <div class="atributos-grid" id="grid-atributos">
+      <!-- Preenchido pelo script -->
+    </div>
+    <button type="button" class="btn btn-outline btn-block mt-1" id="btn-rolar-atributos">🎲 Rolar Atributos</button>
+
+    <button type="button" class="btn btn-primary btn-block btn-lg mt-2" id="btn-confirmar-personagem" disabled>
+      Confirmar e Entrar em Elarion
+    </button>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script>
+    // Protege a página: só quem já fez login pode criar personagem.
+    exigirSessao('aluno');
+
+    Tutorial.instalar('personagem', [
+      { titulo: 'Monte o seu herói',
+        texto: 'Duas escolhas: a classe e os atributos. Elas decidem em quais caminhos você vai se dar '
+             + 'melhor dentro dos encontros.' },
+
+      { alvo: '.classes-grid',
+        titulo: 'A classe',
+        texto: 'Cada classe treina um atributo. Nos encontros, a abordagem ligada a ele ganha +2 — '
+             + 'é a sua especialidade, não uma limitação: você pode tentar qualquer caminho.' },
+
+      { alvo: '#grid-atributos',
+        titulo: 'Os atributos',
+        texto: 'Razão para lógica e números; Harmonia para convivência; Natureza para ciências; '
+             + 'Firmeza para história e justiça. Valores acima de 10 viram bônus no dado.' }
+    ], null);
+
+    // Guarda a classe escolhida e os atributos já rolados, até o jogador confirmar.
+    let classeEscolhidaId = null;
+    let atributosRolados = null;
+
+    /** Desenha os 4 cartões de classe na tela, lendo de CLASSES (dados-jogo.js). */
+    function montarGridClasses() {
+      const grid = document.getElementById('grid-classes');
+      grid.innerHTML = CLASSES.map(c => `
+        <div class="classe-card" data-id="${c.id}" onclick="selecionarClasse('${c.id}')">
+          <div class="icone">${c.icone}</div>
+          <h3>${c.nome}</h3>
+          <p>${c.habilidade}: ${c.descricaoHabilidade}</p>
+        </div>
+      `).join('');
+    }
+
+    /** Marca visualmente a classe escolhida e libera o botão de confirmar quando possível. */
+    function selecionarClasse(id) {
+      classeEscolhidaId = id;
+      document.querySelectorAll('.classe-card').forEach(el => {
+        el.classList.toggle('selecionada', el.dataset.id === id);
+      });
+      atualizarBotaoConfirmar();
+    }
+
+    /** Rola os 4 atributos (3d6 cada) e mostra o resultado na tela. */
+    function rolarAtributos() {
+      atributosRolados = {
+        razao: rolar3d6(),
+        harmonia: rolar3d6(),
+        natureza: rolar3d6(),
+        firmeza: rolar3d6()
+      };
+      const grid = document.getElementById('grid-atributos');
+      grid.innerHTML = Object.entries(ATRIBUTOS).map(([chave, info]) => `
+        <div class="atributo-box">
+          <div class="valor">${atributosRolados[chave]}</div>
+          <div class="nome">${info.nome}</div>
+        </div>
+      `).join('');
+      atualizarBotaoConfirmar();
+    }
+
+    /** Só libera o botão final quando nome + classe + atributos já estiverem prontos. */
+    function atualizarBotaoConfirmar() {
+      const nomePreenchido = document.getElementById('campo-nome-heroi').value.trim().length > 0;
+      const tudoPronto = nomePreenchido && classeEscolhidaId && atributosRolados;
+      document.getElementById('btn-confirmar-personagem').disabled = !tudoPronto;
+    }
+
+    /** Salva o personagem completo no localStorage e segue para o mapa. */
+    function confirmarPersonagem() {
+      const nome = document.getElementById('campo-nome-heroi').value.trim();
+      const personagem = {
+        nome,
+        classeId: classeEscolhidaId,
+        atributos: atributosRolados,
+        xp: 0,
+        ouro: 0,
+        determinacao: Recursos.DETERMINACAO_MAXIMA,
+        determinacaoMaxima: Recursos.DETERMINACAO_MAXIMA,
+        inspiracao: 1,      // todo herói começa com uma re-rolagem no bolso
+        inventario: [],
+        efeitos: {},
+        feitos: [],
+        badges: [],
+        missoesConcluidas: []
+      };
+      Estado.salvarPersonagem(personagem);
+      mostrarToast(`Bem-vindo(a) a Elarion, ${nome}!`);
+      window.location.href = 'mapa.html';
+    }
+
+    // Liga os eventos e desenha a tela inicial.
+    document.getElementById('campo-nome-heroi').addEventListener('input', atualizarBotaoConfirmar);
+    document.getElementById('btn-rolar-atributos').addEventListener('click', rolarAtributos);
+    document.getElementById('btn-confirmar-personagem').addEventListener('click', confirmarPersonagem);
+    montarGridClasses();
+  </script>
+</body>
+</html>

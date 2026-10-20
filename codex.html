@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Códex de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="index.html" class="logo" id="link-logo">Elarion</a>
+    <nav id="nav-codex"></nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA — CÓDEX / DIÁRIO DE ELARION
+
+       É a única tela ABERTA do jogo: funciona sem login, para que
+       qualquer visitante — um professor avaliando, um aluno curioso,
+       a banca da Atividade Extensionista — leia a história sem
+       precisar criar personagem.
+
+       Com sessão aberta, ela ganha o progresso do jogador: o selo
+       "Restaurado" nos territórios concluídos e os feitos narrados.
+       Sem sessão, mostra só a lore e convida a jogar.
+       ========================================================== -->
+  <main class="container largo">
+    <div class="text-center" style="margin-bottom:1.2rem;">
+      <h1 style="font-size:1.4rem;">Códex de Elarion</h1>
+    </div>
+
+    <div class="codex-entrada" id="lenda-padrao">
+      <h3>A Lenda de Elarion</h3>
+      <div class="narrativa">
+        Antes que o Véu se rompesse, Elarion era um só — uma terra onde o Saber corria livre
+        entre quatro Pilares: a Razão, a União, a Vida e a Lei. Os sábios diziam que conhecimento
+        era a única magia que existia de verdade, e que toda pessoa carregava dentro de si uma
+        centelha capaz de reacender um Pilar quando a treva o tocasse.<br><br>
+
+        Então veio a Sombra do Esquecimento. Não nasceu de ódio nem de exército: nasceu da
+        indiferença, do "depois eu vejo", do "isso não é problema meu". Ela não destrói com fogo
+        nem com espada — ela apaga. Apaga nomes, apaga respostas, apaga a vontade de perguntar
+        por quê. Onde ela passa, os livros ficam em branco e as pontes caem; não por falta de
+        pedra, mas por falta de quem ainda saiba erguê-las.<br><br>
+
+        Os quatro Pilares vacilam, cada um à sua maneira. E não há herói profetizado esperando
+        nos registros antigos — essa parte da lenda nunca existiu. Há você, e qualquer um
+        disposto a fazer a pergunta certa e rolar contra o destino. Elarion não precisa de um
+        salvador. Precisa de uma turma inteira de aprendizes dispostos a tentar.
+      </div>
+    </div>
+
+    <div id="campanha-do-mestre"></div>
+
+    <div id="lista-territorios-codex"></div>
+
+    <h2 style="font-size:1.05rem; margin:1.6rem 0 0.7rem;">Feitos registrados</h2>
+    <div id="lista-feitos-codex"></div>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script>
+    /* Sem exigirSessao: o Códex é público. A sessão, quando existe,
+       só acrescenta o progresso do jogador. */
+    const sessao = Estado.getSessao();
+    const personagem = sessao ? Recursos.normalizar(Estado.getPersonagem()) : null;
+
+    /** A barra muda conforme quem está lendo: visitante ou jogador. */
+    function montarNavegacao() {
+      const nav = document.getElementById('nav-codex');
+
+      if (sessao && sessao.papel === 'aluno') {
+        document.getElementById('link-logo').href = 'mapa.html';
+        nav.innerHTML = `
+          <a href="mapa.html">Mapa</a>
+          <a href="loja.html">Loja</a>
+          <a href="perfil.html">Perfil</a>
+          <a href="codex.html" class="ativo">Códex</a>`;
+      } else if (sessao && sessao.papel === 'mestre') {
+        document.getElementById('link-logo').href = 'mestre.html';
+        nav.innerHTML = `
+          <a href="mestre.html">Painel</a>
+          <a href="mesa-mestre.html">Mesa ao Vivo</a>
+          <a href="codex.html" class="ativo">Códex</a>`;
+      } else {
+        nav.innerHTML = `
+          <a href="codex.html" class="ativo">Códex</a>
+          <a href="login.html">Entrar</a>`;
+      }
+    }
+
+    const descricoesTerritorios = {
+      'vale-do-saber': 'Onde a Razão guiava os caminhos através de enigmas e números — hoje cercado por névoa, só atravessado por quem resolve o que os antigos deixaram para trás.',
+      'terras-unidas': 'Onde povos diferentes dividiam a mesma mesa — hoje ameaçado por muros, pois a Sombra sussurra que o outro é menos que você.',
+      'cidade-jardim': 'Onde a cidade florescia em equilíbrio com a terra — hoje com raízes secas, porque ninguém mais planta pensando em quem virá depois.',
+      'salao-da-justica': 'Onde a Lei protegia o fraco do forte — hoje treme sob o peso de julgamentos injustos.'
+    };
+
+    /**
+     * A campanha da turma é uma CAMADA sobre a lenda, não um substituto.
+     *
+     * A Lenda de Elarion é o mundo e continua sempre visível: é ela que
+     * explica os quatro Pilares e a Sombra do Esquecimento. A campanha é
+     * a história que esta turma está vivendo dentro desse mundo — uma
+     * cidade, um inverno, um impasse — e entra logo abaixo.
+     */
+    function montarCampanha() {
+      const campanha = Campanha.get();
+      const temTexto = campanha && (campanha.titulo || campanha.prologo);
+      if (!temTexto) return;
+
+      const prologo = (campanha.prologo || '')
+        .split(/\n\s*\n/)
+        .filter(Boolean)
+        .map(p => `<p style="margin-bottom:0.7rem;">${escaparHTML(p)}</p>`)
+        .join('');
+
+      document.getElementById('campanha-do-mestre').innerHTML = `
+        <div class="codex-entrada destaque-campanha">
+          <span class="codex-selo">A campanha desta turma</span>
+          <h3>${escaparHTML(campanha.titulo || 'A Campanha')}</h3>
+          ${prologo ? `<div class="narrativa">${prologo}</div>` : ''}
+        </div>`;
+    }
+
+    function montarCodex() {
+      const container = document.getElementById('lista-territorios-codex');
+      container.innerHTML = TERRITORIOS.map(t => {
+        const concluido = personagem && buscarQuestsDoTerritorio(t.id).every(q => personagem.missoesConcluidas.includes(q.id));
+        /* O território tem duas camadas: o que ele é em Elarion (fixo) e o
+           que está acontecendo nele nesta campanha (escrito pelo professor).
+           As duas aparecem, nessa ordem — a segunda não apaga a primeira. */
+        const capitulo = Campanha.capitulo(t.id);
+
+        return `
+          <div class="codex-entrada">
+            <h3>${t.icone} ${t.nome} ${concluido ? '<span class="codex-selo">Restaurado</span>' : ''}</h3>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.4rem;">${t.ods}</p>
+            <div class="narrativa">${descricoesTerritorios[t.id]}</div>
+            ${capitulo ? `
+              <p class="rotulo-camada">Nesta campanha</p>
+              <div class="narrativa camada-campanha">${escaparHTML(capitulo)}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    /** As frases que o jogador escreveu após cada acerto crítico. */
+    function montarFeitos() {
+      const feitos = (personagem && personagem.feitos) || [];
+      const alvo = document.getElementById('lista-feitos-codex');
+
+      // Visitante não tem feitos para mostrar: a seção some inteira.
+      if (!sessao) {
+        alvo.previousElementSibling.style.display = 'none';
+        alvo.style.display = 'none';
+        return;
+      }
+
+      if (!feitos.length) {
+        alvo.innerHTML = '<p style="font-size:0.88rem; color:var(--text-muted);">'
+          + 'Nada ainda. Quando você tirar 20 natural num encontro, pode contar como fez — '
+          + 'e a frase fica registrada aqui.</p>';
+        return;
+      }
+
+      alvo.innerHTML = feitos.slice().reverse().map(f => `
+        <div class="feito">
+          <span class="feito-autor">${escaparHTML(personagem.nome)} · ${escaparHTML(f.quest)}</span>
+          <p>“${escaparHTML(f.texto)}”</p>
+        </div>`).join('');
+    }
+
+    montarNavegacao();
+    montarCampanha();
+    montarCodex();
+    montarFeitos();
+
+    /* Visitante sem sessão: convite para entrar no jogo. */
+    if (!sessao) {
+      const convite = document.createElement('div');
+      convite.className = 'card text-center mt-2';
+      convite.innerHTML = `
+        <h2 style="font-size:1.05rem; margin-bottom:0.4rem;">Quer entrar nesta história?</h2>
+        <p style="color:var(--text-muted); font-size:0.92rem; margin-bottom:0.9rem;">
+          Crie seu herói e comece pelo território que quiser. Leva um minuto.
+        </p>
+        <a href="login.html" class="btn btn-primary">Jogar</a>`;
+      document.querySelector('main').appendChild(convite);
+    }
+  </script>
+</body>
+</html>

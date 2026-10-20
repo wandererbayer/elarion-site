@@ -1,0 +1,1730 @@
+/* ==========================================================================
+   CRÔNICAS DE ELARION — style.css
+   --------------------------------------------------------------------------
+   Tema visual "dark fantasy", inspirado em D&D Beyond e TeachQuest:
+   fundo de tinta escura azulada, painéis com borda fina e filete dourado,
+   títulos em serifa romana (Cinzel) e tipografia condensada nos controles.
+
+   Organização:
+     1. Fontes e variáveis    5. Cards, narrativa e formulários
+     2. Reset e base           6. Componentes do jogo
+     3. Navbar/container       7. Perfil, badges, tabelas, painel do mestre
+     4. Botões                 8. Códex, toast, utilitários  9. Responsivo
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Roboto+Condensed:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+/* ============================================================
+   1. VARIÁVEIS
+   ============================================================ */
+:root {
+  /* Fundos — do mais escuro (página) ao mais claro (elemento elevado) */
+  --bg:        #0C1017;   /* fundo geral (tinta/noite) */
+  --bg-card:   #161D2B;   /* painéis e cards */
+  --bg-elev:   #1D2637;   /* caixas dentro de cards, inputs */
+  --parchment: #1A2130;   /* caixa de narrativa (texto de RPG) */
+
+  /* Marca */
+  --primary:       #C53131;  /* carmesim — ação principal */
+  --primary-hover: #E04343;
+  --accent:        #C9A227;  /* dourado — destaques, filetes, XP */
+  --accent-hover:  #E5BC3E;
+  --secondary:     #4A7FA5;  /* azul-aço */
+  --danger:        #D64545;
+  --success:       #3FA06A;
+
+  /* Texto */
+  --text:       #E9E7E2;
+  --text-muted: #949DB1;
+  --text-faint: #5D6578;
+
+  /* Linhas e profundidade */
+  --border:      #273040;
+  --border-soft: #1F2736;
+  --border-gold: rgba(201, 162, 39, 0.38);
+  --shadow:      0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-sm:   0 2px 8px rgba(0, 0, 0, 0.35);
+  --radius:      6px;
+  --radius-sm:   4px;
+
+  --font-title: 'Cinzel', Georgia, serif;
+  --font-ui:    'Roboto Condensed', 'Inter', system-ui, sans-serif;
+  --font-body:  'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   2. RESET E BASE
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background-color: var(--bg);
+  /* Dois brilhos radiais (carmesim e dourado) sobre a tinta escura dão
+     profundidade sem precisar de imagem de fundo pesada. */
+  background-image:
+    radial-gradient(900px 520px at 12% -8%, rgba(197, 49, 49, 0.16), transparent 60%),
+    radial-gradient(760px 480px at 92% 4%, rgba(201, 162, 39, 0.10), transparent 62%),
+    linear-gradient(180deg, #0F141E 0%, #0C1017 45%, #090C12 100%);
+  background-attachment: fixed;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  line-height: 1.2;
+  color: #F3EFE4;
+  letter-spacing: 0.02em;
+}
+h1 { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6); }
+
+a { color: var(--accent); text-decoration: none; transition: color 0.18s ease; }
+a:hover { color: var(--accent-hover); }
+
+img { max-width: 100%; display: block; }
+
+::selection { background: var(--primary); color: #fff; }
+
+/* ============================================================
+   3. NAVBAR / CONTAINER / RODAPÉ
+   ============================================================ */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.1rem;
+  background: linear-gradient(180deg, #121926 0%, #0E141E 100%);
+  border-bottom: 1px solid var(--border);
+  /* Filete dourado embaixo: assinatura visual do tema */
+  box-shadow: 0 1px 0 rgba(201, 162, 39, 0.25), 0 6px 20px rgba(0, 0, 0, 0.5);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.navbar .logo {
+  font-family: var(--font-title);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #F3EFE4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.navbar .logo:hover { color: var(--accent); }
+
+.navbar nav { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.navbar nav a {
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.navbar nav a:hover {
+  color: #F3EFE4;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+}
+.navbar nav a.ativo {
+  color: var(--accent);
+  border-color: var(--border-gold);
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.container {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.container.largo { max-width: 1000px; }
+
+.footer-rodape {
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  padding: 1.5rem 1rem 2rem;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 2rem;
+}
+
+/* ============================================================
+   4. BOTÕES — rótulo condensado em caixa alta, estilo CTA de RPG
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  text-align: center;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #D13A3A 0%, var(--primary) 100%);
+  color: #fff;
+  border-color: #8E2222;
+  box-shadow: 0 2px 0 #7C1D1D, 0 8px 18px rgba(197, 49, 49, 0.28);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #E64B4B 0%, var(--primary-hover) 100%);
+  box-shadow: 0 2px 0 #7C1D1D, 0 10px 24px rgba(224, 67, 67, 0.4);
+}
+
+.btn-secondary {
+  background: var(--bg-elev);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) { background: #253047; border-color: #38455E; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--border-gold);
+}
+.btn-outline:hover:not(:disabled) {
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--accent-hover);
+  border-color: var(--accent);
+}
+
+.btn-block { display: flex; width: 100%; }
+.btn-lg { font-size: 1rem; padding: 0.9rem 1.6rem; }
+.btn-sm { font-size: 0.78rem; padding: 0.45rem 0.8rem; }
+
+/* ============================================================
+   5. CARDS, NARRATIVA E FORMULÁRIOS
+   ============================================================ */
+.card {
+  position: relative;
+  background: linear-gradient(180deg, #19212F 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+/* Fio dourado no topo de cada painel — detalhe de ficha de RPG */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
+}
+
+.narrativa {
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  font-size: 0.97rem;
+  font-style: italic;
+  color: #CFD5E0;
+  margin-bottom: 1rem;
+}
+
+.form-group { margin-bottom: 1rem; }
+
+.form-group label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.form-group textarea { min-height: 90px; resize: vertical; }
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.16);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder { color: var(--text-faint); }
+
+/* ============================================================
+   6. COMPONENTES DO JOGO
+   ============================================================ */
+
+/* --- Escolha de papel (Aluno/Mestre) no login --- */
+.role-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 1.1rem; }
+
+.role-btn {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 0.6rem;
+  cursor: pointer;
+  text-align: center;
+  color: var(--text);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.role-btn:hover { transform: translateY(-2px); border-color: #3A465F; }
+.role-btn.ativo {
+  border-color: var(--primary);
+  background: rgba(197, 49, 49, 0.14);
+  box-shadow: 0 0 0 3px rgba(197, 49, 49, 0.14);
+}
+.role-btn .icone { font-size: 1.7rem; display: block; margin-bottom: 0.25rem; }
+.role-btn strong {
+  display: block;
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.9rem;
+}
+.role-btn span.legenda { font-size: 0.75rem; color: var(--text-muted); }
+
+/* --- Grade de classes de personagem --- */
+.classes-grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; margin-bottom: 1.1rem; }
+
+.classe-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+  color: var(--text);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.classe-card:hover { transform: translateY(-2px); border-color: #3A465F; }
+.classe-card.selecionada {
+  border-color: var(--accent);
+  background: rgba(201, 162, 39, 0.1);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.14);
+}
+.classe-card .icone { font-size: 2rem; flex-shrink: 0; }
+.classe-card h3 { font-size: 1rem; margin-bottom: 0.1rem; }
+.classe-card p { font-size: 0.82rem; color: var(--text-muted); }
+
+/* --- Atributos (ficha do personagem) --- */
+.atributos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+
+.atributo-box {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+}
+.atributo-box .valor {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.atributo-box .nome {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* --- Mapa de territórios --- */
+.map-grid { display: grid; grid-template-columns: 1fr; gap: 0.8rem; }
+
+.territorio {
+  position: relative;
+  display: block;
+  background: linear-gradient(180deg, #1A2231 0%, #141B27 100%);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--secondary);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  color: var(--text);
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.territorio:hover {
+  transform: translateX(3px);
+  box-shadow: var(--shadow);
+  border-left-color: var(--accent);
+}
+.territorio .icone { font-size: 1.9rem; display: block; margin-bottom: 0.3rem; }
+.territorio h3 { font-size: 1.05rem; }
+.territorio .tema { font-size: 0.82rem; color: var(--text-muted); }
+.territorio .progresso-mini {
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-top: 0.4rem;
+}
+.territorio.concluido { border-left-color: var(--success); }
+.territorio.concluido .progresso-mini { color: var(--success); }
+
+/* --- Alternativas da quest --- */
+.options { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1rem; }
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.93rem;
+  color: var(--text);
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.option:hover { border-color: #3A465F; background: #222C40; }
+
+.option .letra {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2A3547;
+  border: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.option.selecionada { border-color: var(--accent); background: rgba(201, 162, 39, 0.1); }
+.option.selecionada .letra { background: var(--accent); color: #1A1406; border-color: var(--accent); }
+
+.option.correta { border-color: var(--success); background: rgba(63, 160, 106, 0.14); }
+.option.errada  { border-color: var(--danger);  background: rgba(214, 69, 69, 0.14); }
+
+.feedback-pergunta {
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--border);
+}
+.feedback-pergunta.sucesso { background: rgba(63, 160, 106, 0.14); border-color: rgba(63, 160, 106, 0.5); color: #8FE0B4; }
+.feedback-pergunta.erro    { background: rgba(214, 69, 69, 0.14);  border-color: rgba(214, 69, 69, 0.5);  color: #F2A3A3; }
+
+/* --- Modal de rolagem de dados --- */
+.modal-dados-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 13, 0.88);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 100;
+  animation: fade-in 0.2s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-dados {
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(180deg, #1B2434 0%, #141B27 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.2rem;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+.modal-dados h3 {
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+.modal-dados .cd-info { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.9rem; }
+
+.dado-visual { font-size: 3rem; margin-bottom: 0.3rem; animation: flutuar 2.4s ease-in-out infinite; }
+@keyframes flutuar { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+
+.dado-resultado {
+  font-family: var(--font-title);
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #F3EFE4;
+  margin-bottom: 1rem;
+  min-height: 3.2rem;
+}
+.dado-resultado.critico-sucesso { color: var(--accent); text-shadow: 0 0 24px rgba(201, 162, 39, 0.75); }
+.dado-resultado.critico-falha   { color: var(--danger); text-shadow: 0 0 24px rgba(214, 69, 69, 0.7); }
+
+/* --- Tela de resultado --- */
+.result-topo { text-align: center; margin-bottom: 1.2rem; }
+.result-topo .feedback-icon { font-size: 3.2rem; display: block; margin-bottom: 0.3rem; }
+
+.xp-box { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 1rem 0; }
+.xp-box .pontos {
+  font-family: var(--font-title);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+  line-height: 1.1;
+}
+.xp-box .rotulo {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   7. PERFIL, BADGES, TABELAS E PAINEL DO MESTRE
+   ============================================================ */
+.avatar {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 0.6rem;
+  display: grid;
+  place-items: center;
+  font-size: 2.6rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #2A3547, #161D2B);
+  border: 2px solid var(--border-gold);
+  box-shadow: 0 0 0 5px rgba(201, 162, 39, 0.08), var(--shadow-sm);
+}
+
+.xp-bar-container { margin: 1rem 0; }
+.xp-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+.xp-bar {
+  height: 11px;
+  background: #0E141E;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #9A7A18, var(--accent), var(--accent-hover));
+  box-shadow: 0 0 14px rgba(201, 162, 39, 0.5);
+  transition: width 0.6s ease;
+}
+
+.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 0.6rem; }
+
+.badge-item {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.4rem;
+  text-align: center;
+}
+.badge-item .icone { font-size: 1.8rem; display: block; }
+.badge-item span.nome {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 0.2rem;
+}
+.badge-item.bloqueado { opacity: 0.32; filter: grayscale(1); border-color: var(--border); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.6rem; }
+
+.stat-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 0.5rem;
+  text-align: center;
+}
+.stat-card .valor {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #F3EFE4;
+  line-height: 1.1;
+}
+.stat-card .rotulo {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+th, td { padding: 0.65rem 0.8rem; text-align: left; border-bottom: 1px solid var(--border-soft); }
+
+th {
+  background: #121926;
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255, 255, 255, 0.03); }
+
+/* Barra de progresso em miniatura (tabela de alunos) */
+.progress-mini {
+  height: 7px;
+  width: 100%;
+  min-width: 70px;
+  background: #0E141E;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-mini-fill { height: 100%; background: linear-gradient(90deg, #9A7A18, var(--accent)); }
+
+/* Formulário de criação de quest (mestre) */
+.alt-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.alt-item { display: flex; align-items: center; gap: 0.6rem; }
+.alt-item input[type="text"] {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+}
+.alt-item input[type="text"]:focus { outline: none; border-color: var(--accent); }
+.alt-item input[type="radio"] { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+
+/* Mesa ao vivo do mestre */
+.dado-mestre-box {
+  text-align: center;
+  background: linear-gradient(180deg, #1B2434 0%, #141B27 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 1.4rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.evento-sorteado {
+  background: rgba(201, 162, 39, 0.1);
+  border: 1px solid var(--border-gold);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  font-size: 0.95rem;
+  color: #E7DFC6;
+}
+
+/* ============================================================
+   8. CÓDEX, TOAST E UTILITÁRIOS
+   ============================================================ */
+.codex-entrada {
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--secondary);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.8rem;
+}
+.codex-entrada h3 { font-size: 1rem; color: var(--accent); margin-bottom: 0.3rem; }
+
+.codex-selo {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 0.12rem 0.55rem;
+  margin-bottom: 0.4rem;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translate(-50%, 20px);
+  background: #1B2434;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  padding: 0.7rem 1.1rem;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 200;
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.visivel { opacity: 1; transform: translate(-50%, 0); }
+
+.text-center { text-align: center; }
+.mt-1 { margin-top: 0.7rem; }
+.mt-2 { margin-top: 1.3rem; }
+.flex-col { display: flex; flex-direction: column; gap: 0.6rem; }
+.flex-row-center { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
+
+/* Caixa indicando onde entra uma imagem real (assets/imagens) */
+.placeholder-img {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 10px, transparent 10px 20px),
+    var(--bg-elev);
+  border: 1px dashed var(--border-gold);
+  border-radius: var(--radius);
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  padding: 1.2rem;
+  min-height: 110px;
+}
+
+/* Aviso de modo de demonstração (login admin) */
+.aviso-demo {
+  background: rgba(74, 127, 165, 0.12);
+  border: 1px solid rgba(74, 127, 165, 0.45);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  color: #B9D3E6;
+  margin-bottom: 1rem;
+}
+
+/* ============================================================
+   9. RESPONSIVO
+   ============================================================ */
+@media (min-width: 640px) {
+  .container { padding: 2rem 1.5rem 3.5rem; }
+  .classes-grid { grid-template-columns: 1fr 1fr; }
+  .atributos-grid { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+  .map-grid { grid-template-columns: 1fr 1fr; }
+  .navbar { padding: 0.8rem 2rem; }
+}
+
+@media (min-width: 960px) {
+  .container.largo { padding-left: 2rem; padding-right: 2rem; }
+}
+
+/* ==========================================================================
+   10. COMPONENTES DO NOVO LOOP DE ENCONTRO
+   Barra de recursos, figuras de cena (NPC/inimigo), abordagens,
+   desfecho da rolagem, mochila e loja.
+   ========================================================================== */
+
+/* --- Barra de recursos: a ficha sempre visível, abaixo da navbar --- */
+.barra-recursos {
+  display: flex;
+  justify-content: center;
+  gap: 1.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  background: #0E141E;
+  border-bottom: 1px solid var(--border);
+}
+.recurso { display: flex; align-items: center; gap: 0.45rem; }
+.recurso-rotulo {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+.recurso-valor { font-family: var(--font-title); font-weight: 700; font-size: 1rem; }
+.recurso-valor.insp { color: var(--secondary); letter-spacing: 0.1em; }
+.recurso-valor.ouro { color: var(--accent); }
+
+.pontos-det { display: inline-flex; gap: 3px; }
+.ponto-det {
+  width: 9px; height: 14px;
+  border-radius: 2px;
+  background: #222B3C;
+  border: 1px solid var(--border);
+}
+.ponto-det.cheio {
+  background: linear-gradient(180deg, #E05555, var(--primary));
+  border-color: #8E2222;
+  box-shadow: 0 0 7px rgba(197, 49, 49, 0.55);
+}
+
+/* --- Rótulos de seção --- */
+.rotulo-cena, .rotulo-desafio {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+  margin-bottom: 0.3rem;
+}
+
+/* --- Figuras na cena: quem está diante do jogador --- */
+.figura {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--secondary);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.7rem;
+}
+.figura.inimigo { border-left-color: var(--primary); background: rgba(197, 49, 49, 0.07); }
+.figura-icone { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+.figura strong { font-family: var(--font-title); font-size: 0.98rem; color: #F3EFE4; }
+.figura-fala { font-size: 0.92rem; font-style: italic; color: var(--text-muted); margin-top: 0.15rem; }
+
+/* --- Abordagens: os caminhos possíveis --- */
+.abordagens { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.abordagem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  color: var(--text);
+  font-family: var(--font-body);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.abordagem:hover { transform: translateX(3px); border-color: #3A465F; background: #222C40; }
+.abordagem.afim { border-color: var(--border-gold); }
+.abordagem-texto { font-size: 0.95rem; line-height: 1.5; }
+.abordagem-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.tag-atributo, .tag-cd, .tag-afim {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 99px;
+  padding: 0.14rem 0.6rem;
+  border: 1px solid var(--border);
+}
+.tag-atributo { color: var(--secondary); border-color: rgba(74, 127, 165, 0.5); }
+.tag-cd { color: var(--text-muted); }
+.tag-afim { color: var(--accent); border-color: var(--border-gold); background: rgba(201, 162, 39, 0.1); }
+
+/* --- Modal de rolagem: CD e modificadores à mostra (estilo BG3) --- */
+.cd-alvo {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.8rem;
+}
+.cd-alvo strong { color: #F3EFE4; font-size: 1.1rem; }
+
+.selo-vantagem {
+  display: inline-block;
+  font-size: 0.68rem;
+  border-radius: 99px;
+  padding: 0.1rem 0.55rem;
+  margin-left: 0.35rem;
+  border: 1px solid;
+}
+.selo-vantagem.vantagem { color: var(--success); border-color: rgba(63, 160, 106, 0.6); }
+.selo-vantagem.desvantagem { color: var(--danger); border-color: rgba(214, 69, 69, 0.6); }
+
+.mod-lista {
+  text-align: left;
+  background: #0E141E;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.9rem;
+}
+.mod-linha {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  padding: 0.16rem 0;
+}
+.mod-linha strong { color: var(--text); font-family: var(--font-ui); }
+.mod-linha.total {
+  border-top: 1px solid var(--border);
+  margin-top: 0.3rem;
+  padding-top: 0.35rem;
+  color: var(--accent);
+}
+.mod-linha.total strong { color: var(--accent); }
+
+.dado-detalhe { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.8rem; min-height: 1.2rem; }
+
+/* --- Desfecho da rolagem, no topo do desafio --- */
+.desfecho {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-faint);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+  background: var(--bg-elev);
+}
+.desfecho p { font-size: 0.93rem; margin-top: 0.4rem; line-height: 1.55; }
+.desfecho-selo {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.desfecho-dado {
+  float: right;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.desfecho-extra { color: var(--text-muted); font-style: italic; font-size: 0.88rem !important; }
+
+.desfecho.critico       { border-left-color: var(--accent);  background: rgba(201, 162, 39, 0.09); }
+.desfecho.critico .desfecho-selo { color: var(--accent); }
+.desfecho.sucesso       { border-left-color: var(--success); background: rgba(63, 160, 106, 0.09); }
+.desfecho.sucesso .desfecho-selo { color: var(--success); }
+.desfecho.falha         { border-left-color: var(--danger);  background: rgba(214, 69, 69, 0.08); }
+.desfecho.falha .desfecho-selo { color: var(--danger); }
+.desfecho.falha-critica { border-left-color: #8E2222; background: rgba(142, 34, 34, 0.18); }
+.desfecho.falha-critica .desfecho-selo { color: #F08080; }
+
+/* --- Mochila --- */
+.lista-mochila { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+
+.item-mochila {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.item-mochila:hover { border-color: var(--accent); }
+.item-icone { font-size: 1.5rem; flex-shrink: 0; }
+.item-mochila em { color: var(--accent); font-style: normal; font-weight: 700; }
+.item-desc { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+/* --- Loja --- */
+.loja-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.bolsa {
+  text-align: right;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.9rem;
+  background: rgba(201, 162, 39, 0.08);
+}
+.bolsa-valor { display: block; font-family: var(--font-title); font-size: 1.5rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.bolsa-rotulo { font-family: var(--font-ui); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+
+.prateleira { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+.item-card.sem-ouro { opacity: 0.55; }
+.item-card.guardado { border-color: var(--border-gold); background: rgba(201, 162, 39, 0.06); }
+.item-icone-grande { font-size: 2rem; flex-shrink: 0; }
+.item-info { flex: 1; min-width: 0; }
+.item-info strong { font-family: var(--font-title); font-size: 0.98rem; }
+.item-compra { text-align: center; flex-shrink: 0; }
+.item-preco {
+  display: block;
+  font-family: var(--font-title);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+/* --- Mesa ao Vivo em dois painéis --- */
+.mesa-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: start; }
+@media (min-width: 900px) {
+  .mesa-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.checkpoint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 0.55rem;
+  background: var(--bg-elev);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+.checkpoint:hover { border-color: #3A465F; }
+.checkpoint.concluido { border-left-color: var(--success); opacity: 0.65; }
+.checkpoint.concluido .checkpoint-titulo { text-decoration: line-through; }
+.checkpoint.atual { border-left-color: var(--accent); background: rgba(201, 162, 39, 0.09); }
+.checkpoint-marca {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.checkpoint.concluido .checkpoint-marca { background: var(--success); border-color: var(--success); color: #06140C; }
+.checkpoint-titulo { font-family: var(--font-title); font-size: 0.95rem; }
+.checkpoint-nota { font-size: 0.83rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+/* Cartão de status de cada aluno na mesa */
+.aluno-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.55rem;
+  background: var(--bg-elev);
+}
+.aluno-linha { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; }
+.aluno-nome { font-family: var(--font-title); font-size: 0.98rem; }
+.aluno-classe { font-size: 0.78rem; color: var(--text-muted); }
+.aluno-stats {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.aluno-stats b { color: var(--text); font-weight: 700; }
+.aluno-stats .det b { color: var(--primary); }
+.aluno-stats .ouro b { color: var(--accent); }
+.aluno-stats .insp b { color: var(--secondary); }
+
+/* Feito narrado pelo aluno após um crítico (Critical Role) */
+.feito {
+  border-left: 3px solid var(--accent);
+  background: rgba(201, 162, 39, 0.07);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.6rem;
+}
+.feito-autor {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.feito p { font-size: 0.92rem; font-style: italic; color: #CFD5E0; margin-top: 0.2rem; }
+
+
+/* --- Gerenciador de campanhas (painel do mestre) --- */
+.bloco-dobravel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.6rem;
+  background: #11182440;
+}
+.bloco-dobravel summary {
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+.bloco-dobravel summary:hover { color: var(--accent); }
+.bloco-dobravel[open] summary { color: var(--accent); margin-bottom: 0.3rem; }
+
+.linha-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: var(--text);
+  padding: 0.4rem 0;
+  cursor: pointer;
+}
+.linha-check input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--primary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.elenco-linha { border-bottom: 1px solid var(--border-soft); }
+.elenco-linha:last-of-type { border-bottom: none; }
+.elenco-meta { display: block; font-size: 0.8rem; color: var(--text-muted); }
+
+/* Nome do herói ao lado do nome do aluno, na mesa */
+.aluno-heroi {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 0.3rem;
+}
+/* ==========================================================================
+   11. TUTORIAL GUIADO
+   O fundo escuro é feito com um box-shadow gigante no "recorte": tudo em
+   volta fica escuro e só o elemento explicado continua visível.
+   ========================================================================== */
+.tutorial-cena { position: fixed; inset: 0; z-index: 500; pointer-events: none; }
+
+.tutorial-recorte {
+  position: fixed;
+  border-radius: var(--radius);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(5, 8, 13, 0.82), 0 0 22px rgba(201, 162, 39, 0.45);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+
+.tutorial-balao {
+  position: fixed;
+  width: min(340px, calc(100vw - 24px));
+  background: linear-gradient(180deg, #1B2434 0%, #141B27 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  transition: top 0.25s ease, left 0.25s ease;
+}
+.tutorial-balao.centralizado {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 24px));
+}
+
+.tutorial-passo-num {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+.tutorial-balao h3 { font-size: 1.05rem; margin: 0.25rem 0 0.4rem; }
+.tutorial-balao p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.55; }
+
+.tutorial-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.tutorial-navegacao { display: flex; gap: 0.4rem; }
+
+.tutorial-pular {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+.tutorial-pular:hover { color: var(--text-muted); }
+
+/* O "sem destaque" quando o alvo some da tela */
+.tutorial-recorte[style*="display: none"] + .tutorial-balao { box-shadow: 0 0 0 9999px rgba(5, 8, 13, 0.82); }
+
+/* ==========================================================================
+   12. LAYOUT ADAPTÁVEL
+   --------------------------------------------------------------------------
+   O site nasceu pensado para celular: uma coluna só, tudo empilhado. Isso
+   funciona no telefone e fica esquisito no monitor, com uma faixa estreita
+   de conteúdo e muito vazio dos lados.
+
+   A correção não é só alargar o container: é deixar cada grade decidir
+   quantas colunas cabem, com repeat(auto-fit, minmax(...)). Assim o mesmo
+   CSS serve do celular ao monitor largo, sem breakpoint para cada tela.
+   ========================================================================== */
+
+@media (min-width: 900px) {
+  /* Páginas de leitura/formulário ganham um pouco mais de largura... */
+  .container { max-width: 720px; }
+  /* ...e as de painel usam a tela inteira, com limite para não cansar a vista. */
+  .container.largo { max-width: 1280px; }
+}
+
+/* --- Grades que se adaptam sozinhas --- */
+@media (min-width: 760px) {
+  .map-grid     { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .prateleira   { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .abordagens   { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .stats-grid   { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  /* auto-fit, e não 4 fixas: dentro de uma coluna estreita (a ficha do
+     personagem) quatro atributos lado a lado estouravam a largura. */
+  .atributos-grid { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+}
+
+/* A abordagem vira um cartão com a mesma altura das vizinhas */
+@media (min-width: 760px) {
+  .abordagem { justify-content: space-between; }
+  .abordagem:hover { transform: translateY(-3px); }
+}
+
+/* Códex e lista de territórios em duas colunas no desktop */
+@media (min-width: 860px) {
+  #lista-territorios-codex,
+  #lista-feitos-codex {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 0.8rem;
+    align-items: start;
+  }
+  #lista-territorios-codex .codex-entrada,
+  #lista-feitos-codex .feito { margin-bottom: 0; }
+}
+
+/* Painel do mestre: os cards se distribuem em colunas.
+
+   Em grid, as linhas se alinham: um card curto ao lado de um card
+   alto deixa um buraco até a linha seguinte começar. Colunas CSS
+   empilham cada card logo abaixo do anterior da mesma coluna, sem
+   vão nenhum — é o comportamento de mural que o painel pede. */
+@media (min-width: 1050px) {
+  .painel-grid {
+    columns: 2;
+    column-gap: 1rem;
+  }
+  .painel-grid > .card {
+    /* inline-block impede que o navegador parta um card ao meio */
+    display: inline-block;
+    width: 100%;
+    margin: 0 0 1rem;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+  }
+}
+
+@media (min-width: 1600px) {
+  .painel-grid { columns: 3; }
+}
+
+/* Ficha do personagem em duas colunas */
+@media (min-width: 860px) {
+  .ficha-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1.4rem;
+    align-items: start;
+  }
+}
+
+/* Encontro: um pouco mais largo, mas ainda centrado para leitura */
+@media (min-width: 900px) {
+  .container.encontro { max-width: 820px; }
+}
+
+/* ==========================================================================
+   13. PÁGINA INICIAL
+   ========================================================================== */
+.home-hero { display: grid; gap: 1.4rem; margin-bottom: 2rem; align-items: center; }
+@media (min-width: 900px) {
+  /* minmax(0, 1fr) e não 1fr: uma coluna 1fr tem largura mínima igual ao
+     conteúdo, então a imagem da capa (1168px de largura natural) esticava
+     a coluna e vazava para fora da página. */
+  .home-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2.4rem; margin-bottom: 2.8rem; }
+}
+.home-hero > * { min-width: 0; }
+
+.home-titulo {
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  line-height: 1.05;
+  margin: 0.2rem 0 0.6rem;
+}
+.home-subtitulo {
+  font-size: clamp(0.98rem, 1.6vw, 1.12rem);
+  color: var(--text-muted);
+  max-width: 46ch;
+  margin-bottom: 1.3rem;
+}
+.home-acoes { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.home-capa { min-height: 240px; }
+@media (min-width: 900px) { .home-capa { min-height: 320px; } }
+
+.home-nota {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.2rem;
+  font-family: var(--font-ui);
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+.resumo-estrelas { color: var(--accent); letter-spacing: 0.1em; font-size: 1rem; }
+
+.home-colunas { display: grid; gap: 1rem; margin-bottom: 2.2rem; align-items: start; }
+@media (min-width: 760px) {
+  .home-colunas { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+  .home-colunas > .card { margin-bottom: 0; height: 100%; }
+}
+.home-card-titulo { font-size: 1.05rem; margin-bottom: 0.5rem; }
+.home-card-texto { font-size: 0.94rem; color: var(--text-muted); line-height: 1.6; }
+
+.home-secao-titulo {
+  font-size: 1.15rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ==========================================================================
+   14. AVALIAÇÕES (estrelas e depoimentos)
+   ========================================================================== */
+.estrelas { display: flex; align-items: center; gap: 0.15rem; }
+
+.estrela {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: #2A3547;
+  padding: 0 0.08rem;
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.estrela:hover { transform: scale(1.14); }
+.estrela.cheia { color: var(--accent); text-shadow: 0 0 12px rgba(201, 162, 39, 0.5); }
+
+.estrelas-rotulo {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-left: 0.6rem;
+}
+
+.feedback-aviso {
+  font-size: 0.8rem;
+  color: var(--success);
+  margin-top: 0.55rem;
+  min-height: 1rem;
+}
+
+.depoimentos { display: grid; gap: 0.8rem; align-items: start; }
+@media (min-width: 700px) {
+  .depoimentos { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+}
+
+.depoimento {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin: 0;
+}
+.depoimento-estrelas { color: var(--accent); letter-spacing: 0.14em; margin-bottom: 0.5rem; }
+.depoimento blockquote {
+  font-size: 0.94rem;
+  font-style: italic;
+  color: #CFD5E0;
+  line-height: 1.55;
+  margin-bottom: 0.7rem;
+}
+.depoimento figcaption {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.depoimento figcaption span {
+  display: block;
+  font-weight: 400;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  margin-top: 0.1rem;
+}
+
+
+/* ==========================================================================
+   15. CAPA DA PÁGINA INICIAL
+   --------------------------------------------------------------------------
+   A arte é clara e quente; o site é tinta escura. Sem tratamento, a capa
+   vira uma janela acesa no meio da página. A correção é feita aqui, não na
+   imagem: um leve rebaixamento de brilho e saturação, mais dois gradientes
+   por cima — um que escurece as bordas e outro que puxa a base para o azul
+   do fundo, de modo que a imagem termine dentro da página em vez de parar
+   num corte reto.
+   ========================================================================== */
+.home-capa {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+  aspect-ratio: 21 / 9;
+}
+
+.home-capa img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* object-position alto: se a arte for mais alta que 21:9, o corte tira o
+     chão e preserva os rostos. */
+  object-position: 50% 38%;
+  filter: saturate(0.88) brightness(0.86) contrast(1.06);
+}
+
+/* Véu de integração: vinheta + base azulada, sem cobrir o centro. */
+.home-capa::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 100% at 50% 35%, transparent 38%, rgba(9, 12, 18, 0.55) 100%),
+    linear-gradient(180deg, rgba(12, 16, 23, 0.25) 0%, transparent 28%, rgba(12, 16, 23, 0.75) 100%);
+}
+
+/* Fio dourado no topo, igual ao dos cards */
+.home-capa::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 2;
+  background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
+}
+
+.home-capa-vazia {
+  display: none;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  text-align: center;
+  padding: 1.2rem;
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 10px, transparent 10px 20px),
+    var(--bg-elev);
+}
+.home-capa.sem-imagem { border-style: dashed; border-color: var(--border-gold); }
+.home-capa.sem-imagem::after { display: none; }
+.home-capa.sem-imagem .home-capa-vazia { display: grid; }
+.home-capa-vazia code {
+  color: var(--accent);
+  font-size: 0.8rem;
+  background: rgba(201, 162, 39, 0.1);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+/* No celular a capa fica um pouco mais alta, para os personagens caberem. */
+@media (max-width: 760px) {
+  .home-capa { aspect-ratio: 16 / 10; }
+}
+
+
+/* ==========================================================================
+   16. MARCA NA BARRA DE NAVEGAÇÃO
+   --------------------------------------------------------------------------
+   O emblema entra como imagem de fundo do próprio link, e o nome continua
+   sendo texto em Cinzel. Duas vantagens sobre usar a logo inteira como
+   imagem: o nome fica nítido em qualquer tela e continua selecionável e
+   legível por leitores de tela.
+   ========================================================================== */
+.navbar .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.navbar .logo::before {
+  content: '';
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: url('../assets/imagens/marca-elarion-simples.svg') center / contain no-repeat;
+  /* Brilho discreto no dourado, para o emblema não ficar chapado no escuro */
+  filter: drop-shadow(0 0 6px rgba(201, 162, 39, 0.35));
+  transition: transform 0.25s ease;
+}
+.navbar .logo:hover::before { transform: rotate(-12deg) scale(1.06); }
+
+/* No celular, só o emblema: o nome escrito ocuparia a barra inteira */
+@media (max-width: 480px) {
+  .navbar .logo { font-size: 0; gap: 0; }
+  .navbar .logo::before { width: 34px; height: 34px; }
+}
+
+/* Logo grande, para a página inicial ou material impresso */
+.marca-grande {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+.home-titulo-marca { margin: 0.2rem 0 0.6rem; }
+
+
+/* ==========================================================================
+   17. SEÇÃO "COMO SE JOGA" DA PÁGINA INICIAL
+   ========================================================================== */
+.home-secao { margin-bottom: 2.4rem; }
+
+.home-secao-intro {
+  font-size: 0.96rem;
+  color: var(--text-muted);
+  max-width: 62ch;
+  margin-bottom: 1.3rem;
+  line-height: 1.65;
+}
+
+/* Os quatro passos do encontro. No celular empilham; no desktop
+   viram colunas que se ajustam sozinhas à largura disponível. */
+.passos-jogo {
+  list-style: none;
+  display: grid;
+  gap: 0.8rem;
+  counter-reset: passo;
+}
+@media (min-width: 720px) {
+  .passos-jogo { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+
+.passo {
+  position: relative;
+  background: linear-gradient(180deg, #19212F 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.1rem 1.2rem;
+}
+.passo h3 { font-size: 1rem; margin: 0.5rem 0 0.4rem; }
+.passo p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+
+.passo-num {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(201, 162, 39, 0.12);
+  border: 1px solid var(--border-gold);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.nota-professor {
+  margin-top: 1rem;
+  border-left: 3px solid var(--secondary);
+}
+
+
+/* ==========================================================================
+   18. AVENTURAS PRONTAS (painel do mestre)
+   ========================================================================== */
+.aventura-pronta {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.7rem;
+  background: var(--bg-elev);
+}
+.aventura-pronta h3 { font-size: 1rem; margin: 0.35rem 0 0.4rem; }
+.aventura-pronta p {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 0.8rem;
+}
+
+.selo-nivel {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 99px;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid;
+}
+.selo-nivel.iniciante     { color: var(--success);   border-color: rgba(63, 160, 106, 0.55); background: rgba(63, 160, 106, 0.1); }
+.selo-nivel.intermediaria { color: var(--accent);    border-color: var(--border-gold);       background: rgba(201, 162, 39, 0.1); }
+.selo-nivel.avancada      { color: var(--primary);   border-color: rgba(197, 49, 49, 0.55);  background: rgba(197, 49, 49, 0.1); }
+
+
+/* ==========================================================================
+   19. CÓDEX — lenda e campanha em camadas
+   A Lenda de Elarion é o mundo e nunca sai da tela; a campanha da turma
+   entra destacada logo abaixo, e cada território mostra primeiro o que é
+   em Elarion e depois o que está acontecendo nele nesta campanha.
+   ========================================================================== */
+.destaque-campanha {
+  border-left-color: var(--accent);
+  background: rgba(201, 162, 39, 0.07);
+}
+.destaque-campanha .narrativa { background: transparent; border: none; padding: 0; }
+
+.rotulo-camada {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin: 0.8rem 0 0.35rem;
+}
+.camada-campanha { border-left-color: var(--accent); }
+
+/* Lista dos quatro Pilares na página inicial */
+.lista-pilares {
+  list-style: none;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.lista-pilares li {
+  position: relative;
+  padding-left: 1.1rem;
+  margin-bottom: 0.55rem;
+}
+.lista-pilares li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+.lista-pilares strong { color: var(--text); }
+
+
+/* Dica abaixo de um campo de formulário (código da turma, por exemplo) */
+.dica-campo {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin-top: 0.35rem;
+  min-height: 1rem;
+}

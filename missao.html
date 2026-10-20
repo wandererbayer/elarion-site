@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encontro — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mapa.html" class="logo">Elarion</a>
+    <nav>
+      <a href="mapa.html">Mapa</a>
+      <a href="#" id="btn-tutorial">Tutorial</a>
+      <a href="loja.html">Loja</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="codex.html">Códex</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA — ENCONTRO
+       O loop acontece em três etapas, e o jogador só vê uma por vez:
+
+       1. CENA      — quem está na frente dele e o que diz
+       2. ABORDAGEM — como ele decide agir; cada escolha usa um atributo
+                      diferente, com dificuldade própria. Aqui a rolagem
+                      acontece, com a CD e os modificadores à mostra.
+       3. DESAFIO   — a pergunta de conteúdo, que resolve a cena. O
+                      resultado do dado já mudou o terreno: um crítico
+                      elimina uma alternativa, uma falha deu a vez ao
+                      inimigo.
+
+       Errar o desafio não repete a tela: custa Determinação. Quem quiser
+       outra chance gasta Inspiração. Determinação a zero = recuo.
+       ========================================================== -->
+
+  <!-- Barra de recursos: sempre visível, como a ficha na mesa -->
+  <div class="barra-recursos" id="barra-recursos"></div>
+
+  <main class="container encontro">
+
+    <!-- ---------- ETAPA 1: A CENA ---------- -->
+    <section id="etapa-cena" style="display:none;">
+      <p class="rotulo-cena" id="rotulo-territorio"></p>
+      <h1 id="titulo-encontro" style="font-size:1.35rem; margin-bottom:0.8rem;"></h1>
+
+      <div id="area-figura"></div>
+
+      <div class="narrativa" id="texto-narrativa"></div>
+
+      <button type="button" class="btn btn-primary btn-block" onclick="irParaAbordagens()">
+        E agora?
+      </button>
+    </section>
+
+    <!-- ---------- ETAPA 2: A ABORDAGEM ---------- -->
+    <section id="etapa-abordagem" style="display:none;">
+      <h2 style="font-size:1.1rem; margin-bottom:0.3rem;">Como você age?</h2>
+      <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">
+        Nenhum caminho é o certo. Cada um usa um atributo diferente — e a sua classe
+        favorece um deles.
+      </p>
+      <div id="lista-abordagens" class="abordagens"></div>
+
+      <button type="button" class="btn btn-secondary btn-block mt-1" onclick="abrirMochila()">
+        Abrir a mochila
+      </button>
+    </section>
+
+    <!-- ---------- ETAPA 3: O DESAFIO ---------- -->
+    <section id="etapa-desafio" style="display:none;">
+      <div class="desfecho-rolagem" id="desfecho-rolagem"></div>
+
+      <div class="card">
+        <p class="rotulo-desafio">O desafio</p>
+        <p id="texto-pergunta" style="font-size:1.02rem; margin-bottom:1rem;"></p>
+        <div class="options" id="lista-alternativas"></div>
+        <div class="feedback-pergunta" id="texto-feedback" style="display:none;"></div>
+        <button type="button" class="btn btn-primary btn-block" id="btn-confirmar" onclick="confirmarResposta()">
+          Confirmar
+        </button>
+      </div>
+    </section>
+
+    <!-- ---------- Território já concluído ---------- -->
+    <section id="area-sem-quest" style="display:none;" class="text-center">
+      <div class="card">
+        <h2 style="font-size:1.15rem; margin-bottom:0.5rem;">Este território está em paz</h2>
+        <p style="color:var(--text-muted);">Você resolveu tudo o que havia aqui. Outros lugares ainda esperam.</p>
+      </div>
+      <a href="mapa.html" class="btn btn-primary btn-block">Voltar ao Mapa</a>
+    </section>
+
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script>
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+
+    const parametros = new URLSearchParams(window.location.search);
+    const territorioId = parametros.get('territorio');
+    const territorio = buscarTerritorio(territorioId);
+
+    if (!territorio) {
+      mostrarToast('Território não encontrado — voltando ao mapa.');
+      window.location.href = 'mapa.html';
+    }
+
+    let quest = null;              // o encontro atual
+    let abordagemEscolhida = null; // a abordagem que o jogador seguiu
+    let faixa = null;              // 'critico' | 'sucesso' | 'falha' | 'falha-critica'
+    let alternativaSelecionada = null;
+    let alternativasVisiveis = [];  // pode encolher (crítico / Lente da Revelação)
+    let errosNoDesafio = 0;
+
+    /* ============================================================
+       BARRA DE RECURSOS (Determinação, Inspiração, ouro)
+       ============================================================ */
+    function desenharRecursos() {
+      const pontos = Array.from({ length: personagem.determinacaoMaxima }, (_, i) =>
+        `<span class="ponto-det ${i < personagem.determinacao ? 'cheio' : ''}"></span>`).join('');
+
+      document.getElementById('barra-recursos').innerHTML = `
+        <div class="recurso">
+          <span class="recurso-rotulo">Determinação</span>
+          <span class="pontos-det">${pontos}</span>
+        </div>
+        <div class="recurso">
+          <span class="recurso-rotulo">Inspiração</span>
+          <span class="recurso-valor insp">${'✦'.repeat(personagem.inspiracao) || '—'}</span>
+        </div>
+        <div class="recurso">
+          <span class="recurso-rotulo">Ouro</span>
+          <span class="recurso-valor ouro">${personagem.ouro}</span>
+        </div>`;
+    }
+
+    /* ============================================================
+       ETAPA 1 — A CENA
+       ============================================================ */
+
+    /** Primeiro encontro do território que o jogador ainda não resolveu. */
+    function escolherEncontro() {
+      return buscarQuestsDoTerritorio(territorioId)
+        .find(q => !personagem.missoesConcluidas.includes(q.id)) || null;
+    }
+
+    function mostrarEtapa(id) {
+      ['etapa-cena', 'etapa-abordagem', 'etapa-desafio', 'area-sem-quest']
+        .forEach(secao => { document.getElementById(secao).style.display = 'none'; });
+      document.getElementById(id).style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function montarCena() {
+      quest = escolherEncontro();
+
+      if (!quest) {
+        mostrarEtapa('area-sem-quest');
+        return;
+      }
+
+      document.getElementById('rotulo-territorio').textContent =
+        `${territorio.icone} ${territorio.nome} · ${territorio.tema}`;
+      document.getElementById('titulo-encontro').textContent = quest.titulo;
+      document.getElementById('texto-narrativa').textContent = quest.narrativa;
+
+      // NPC e inimigo aparecem como "figuras" na cena, cada um com a sua fala.
+      let figuras = '';
+      if (quest.npc) {
+        figuras += `
+          <div class="figura npc">
+            <span class="figura-icone">${quest.npc.icone || '🧑'}</span>
+            <div>
+              <strong>${escaparHTML(quest.npc.nome)}</strong>
+              <p class="figura-fala">“${escaparHTML(quest.npc.fala)}”</p>
+            </div>
+          </div>`;
+      }
+      if (quest.inimigo) {
+        figuras += `
+          <div class="figura inimigo">
+            <span class="figura-icone">${quest.inimigo.icone || '👹'}</span>
+            <div>
+              <strong>${escaparHTML(quest.inimigo.nome)}</strong>
+              <p class="figura-fala">“${escaparHTML(quest.inimigo.fala)}”</p>
+            </div>
+          </div>`;
+      }
+      document.getElementById('area-figura').innerHTML = figuras;
+
+      mostrarEtapa('etapa-cena');
+    }
+
+    /* ============================================================
+       ETAPA 2 — A ABORDAGEM
+       ============================================================ */
+    function irParaAbordagens() {
+      const classe = buscarClasse(personagem.classeId);
+
+      document.getElementById('lista-abordagens').innerHTML = quest.abordagens.map((ab, indice) => {
+        const mod = calcularModificador(personagem.atributos[ab.atributo]);
+        const afinidade = classe && classe.atributoPrincipal === ab.atributo;
+        const total = mod + (afinidade ? 2 : 0);
+
+        return `
+          <button type="button" class="abordagem ${afinidade ? 'afim' : ''}" onclick="seguirAbordagem(${indice})">
+            <span class="abordagem-texto">${escaparHTML(ab.texto)}</span>
+            <span class="abordagem-meta">
+              <span class="tag-atributo">${ATRIBUTOS[ab.atributo].nome} ${total >= 0 ? '+' : ''}${total}</span>
+              <span class="tag-cd">CD ${ab.cd}</span>
+              ${afinidade ? '<span class="tag-afim">Afinidade</span>' : ''}
+            </span>
+          </button>`;
+      }).join('');
+
+      mostrarEtapa('etapa-abordagem');
+    }
+
+    /** O jogador escolheu um caminho: rola o dado com tudo à mostra. */
+    function seguirAbordagem(indice) {
+      abordagemEscolhida = quest.abordagens[indice];
+
+      testarAtributo({
+        personagem,
+        atributo: abordagemEscolhida.atributo,
+        cd: abordagemEscolhida.cd,
+        titulo: quest.titulo,
+        aoConcluir: (desfecho) => {
+          faixa = faixaDoResultado(desfecho);
+          personagem.ultimaRolagem = desfecho;
+          aplicarDesfechoDaRolagem(desfecho);
+        }
+      });
+    }
+
+    /* ============================================================
+       ENTRE AS ETAPAS — o que a rolagem mudou na cena
+       ============================================================ */
+    function aplicarDesfechoDaRolagem(desfecho) {
+      const deuCerto = faixa === 'critico' || faixa === 'sucesso';
+      const narrativa = deuCerto ? abordagemEscolhida.sucesso : abordagemEscolhida.falha;
+
+      let extra = '';
+
+      if (faixa === 'critico') {
+        // Crítico: o caminho se abre. Elimina uma alternativa errada.
+        extra = 'A clareza do momento elimina uma possibilidade antes mesmo de você pensar nela.';
+        Recursos.inspirar(personagem, 'um crítico merece ser lembrado');
+      } else if (faixa === 'falha-critica') {
+        // Falha crítica: o inimigo (ou a cena) cobra caro.
+        const dano = quest.inimigo ? (quest.inimigo.dano || 2) + 1 : 2;
+        extra = quest.inimigo
+          ? `${quest.inimigo.nome}: ${quest.inimigo.golpe} Você perde ${dano} de Determinação.`
+          : `A cena vira contra você. Perde ${dano} de Determinação.`;
+        if (Recursos.ferir(personagem, dano)) { recuar(); return; }
+      } else if (faixa === 'falha') {
+        const dano = quest.inimigo ? (quest.inimigo.dano || 2) : 1;
+        extra = quest.inimigo
+          ? `${quest.inimigo.nome} age primeiro. Você perde ${dano} de Determinação.`
+          : `Você perde ${dano} de Determinação com o tropeço.`;
+        if (Recursos.ferir(personagem, dano)) { recuar(); return; }
+      }
+
+      if (desfecho.amuletoQuebrou) {
+        extra += ' (O Amuleto de Osso racha ao meio e absorve o pior.)';
+      }
+
+      desenharRecursos(); // a barra precisa refletir o dano antes do desafio
+
+      document.getElementById('desfecho-rolagem').innerHTML = `
+        <div class="desfecho ${faixa}">
+          <span class="desfecho-selo">${ROTULO_FAIXA[faixa]}</span>
+          <span class="desfecho-dado">d20: ${desfecho.valorDado} → ${desfecho.total} vs CD ${abordagemEscolhida.cd}</span>
+          <p>${escaparHTML(narrativa)}</p>
+          ${extra ? `<p class="desfecho-extra">${escaparHTML(extra)}</p>` : ''}
+        </div>`;
+
+      montarDesafio();
+    }
+
+    /* ============================================================
+       ETAPA 3 — O DESAFIO (a pergunta de conteúdo)
+       ============================================================ */
+    function montarDesafio() {
+      alternativasVisiveis = quest.alternativas.slice();
+
+      // Crítico e Lente da Revelação apagam alternativas erradas.
+      let aApagar = (faixa === 'critico' ? 1 : 0);
+      if (personagem.efeitos.eliminarAlternativa) {
+        aApagar += personagem.efeitos.eliminarAlternativa;
+        delete personagem.efeitos.eliminarAlternativa;
+        Estado.salvarPersonagem(personagem);
+      }
+      while (aApagar > 0 && alternativasVisiveis.length > 2) {
+        const erradas = alternativasVisiveis.filter(a => a.id !== quest.respostaCorreta);
+        const vitima = erradas[Math.floor(Math.random() * erradas.length)];
+        alternativasVisiveis = alternativasVisiveis.filter(a => a.id !== vitima.id);
+        aApagar--;
+      }
+
+      document.getElementById('texto-pergunta').textContent = quest.pergunta;
+      desenharAlternativas();
+
+      alternativaSelecionada = null;
+      errosNoDesafio = 0;
+      document.getElementById('texto-feedback').style.display = 'none';
+      document.getElementById('btn-confirmar').textContent = 'Confirmar';
+
+      mostrarEtapa('etapa-desafio');
+    }
+
+    function desenharAlternativas() {
+      document.getElementById('lista-alternativas').innerHTML = alternativasVisiveis.map((alt, i) => `
+        <button type="button" class="option" data-id="${alt.id}" onclick="selecionarAlternativa('${alt.id}')">
+          <span class="letra">${String.fromCharCode(65 + i)}</span>
+          <span>${escaparHTML(alt.texto)}</span>
+        </button>`).join('');
+    }
+
+    function selecionarAlternativa(id) {
+      alternativaSelecionada = id;
+      document.querySelectorAll('.option').forEach(el => {
+        el.classList.toggle('selecionada', el.dataset.id === id);
+        el.classList.remove('correta', 'errada');
+      });
+    }
+
+    function confirmarResposta() {
+      if (!alternativaSelecionada) {
+        mostrarToast('Escolha uma alternativa.');
+        return;
+      }
+
+      const feedbackEl = document.getElementById('texto-feedback');
+      const acertou = alternativaSelecionada === quest.respostaCorreta;
+      const botaoEl = document.querySelector(`.option[data-id="${alternativaSelecionada}"]`);
+
+      if (acertou) {
+        botaoEl.classList.add('correta');
+        if (errosNoDesafio === 0) Recursos.inspirar(personagem, 'resolveu de primeira');
+        concluirEncontro();
+        return;
+      }
+
+      /* Errou: o inimigo age, a Determinação cai. Não é "tente de novo"
+         de graça — a alternativa errada some e o custo é real. */
+      errosNoDesafio++;
+      botaoEl.classList.add('errada');
+      alternativasVisiveis = alternativasVisiveis.filter(a => a.id !== alternativaSelecionada);
+      alternativaSelecionada = null;
+
+      const dano = quest.inimigo ? (quest.inimigo.dano || 2) : 1;
+      const morreu = Recursos.ferir(personagem, dano);
+      desenharRecursos();
+
+      feedbackEl.className = 'feedback-pergunta erro';
+      feedbackEl.style.display = 'block';
+      feedbackEl.textContent = quest.inimigo
+        ? `${quest.inimigo.nome}: ${quest.inimigo.golpe} −${dano} de Determinação.`
+        : `Resposta errada. −${dano} de Determinação.`;
+
+      if (morreu) { recuar(); return; }
+
+      if (alternativasVisiveis.length === 1) {
+        feedbackEl.textContent += ' Resta uma saída.';
+      }
+      desenharAlternativas();
+    }
+
+    /* ============================================================
+       DESFECHOS DO ENCONTRO
+       ============================================================ */
+
+    /** Determinação zerada: o herói recua. Perde ouro e tempo, não o progresso. */
+    function recuar() {
+      const perda = Math.min(personagem.ouro, 10);
+      personagem.ouro -= perda;
+      Recursos.descansar(personagem);
+      Estado.salvarPersonagem(personagem);
+
+      Estado.salvarUltimoResultado({
+        recuou: true,
+        questTitulo: quest.titulo,
+        faixa: 'recuo',
+        mensagem: 'Sua Determinação se esgotou. Você recua para o acampamento, '
+                + 'cuida das feridas e volta quando estiver inteiro. '
+                + (perda ? `Custou ${perda} de ouro em suprimentos.` : ''),
+        dica: 'Dica de ' + (quest.npc ? quest.npc.nome : 'um viajante') + ': '
+            + 'tente outra abordagem — a que combina com a sua classe tem CD menor.',
+        xpGanho: 0, ouroGanho: -perda
+      });
+      window.location.href = 'resultado.html';
+    }
+
+    /** Acertou o desafio: recompensa proporcional à faixa do dado. */
+    function concluirEncontro() {
+      const multiplicador = MULTIPLICADOR_FAIXA[faixa];
+      const xpGanho = Math.round(quest.xp * multiplicador);
+      const ouroGanho = Math.round(quest.ouro * multiplicador);
+
+      personagem.xp += xpGanho;
+      personagem.ouro += ouroGanho;
+      personagem.missoesConcluidas.push(quest.id);
+
+      // Badge do território, quando todos os encontros dele caírem.
+      const quests = buscarQuestsDoTerritorio(territorioId);
+      const fechou = quests.every(q => personagem.missoesConcluidas.includes(q.id));
+      const badge = BADGES.find(b => b.territorioId === territorioId);
+      if (fechou && badge && !personagem.badges.includes(badge.id)) {
+        personagem.badges.push(badge.id);
+      }
+      if (concederBadgeLenda(personagem)) {
+        mostrarToast('Você se tornou uma Lenda de Elarion.');
+      }
+
+      Estado.salvarPersonagem(personagem);
+      registrarProgresso(personagem);
+
+      Estado.salvarUltimoResultado({
+        questTitulo: quest.titulo,
+        faixa,
+        rotuloFaixa: ROTULO_FAIXA[faixa],
+        mensagem: faixa === 'critico' ? abordagemEscolhida.sucesso
+                : faixa === 'sucesso' ? abordagemEscolhida.sucesso
+                : 'Não saiu como você planejou, mas o problema foi resolvido.',
+        abordagem: abordagemEscolhida.texto,
+        xpGanho, ouroGanho,
+        errosNoDesafio,
+        valorDado: personagem.ultimaRolagem.valorDado,
+        total: personagem.ultimaRolagem.total,
+        cd: abordagemEscolhida.cd,
+        // "How do you want to do this?" — no crítico, o jogador narra o desfecho.
+        pedirNarracao: faixa === 'critico'
+      });
+      window.location.href = 'resultado.html';
+    }
+
+    /* ============================================================
+       MOCHILA — usar itens no meio do encontro
+       ============================================================ */
+    function abrirMochila() {
+      const mochila = Recursos.mochila(personagem);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-dados-overlay';
+      overlay.innerHTML = `
+        <div class="modal-dados" style="max-width:420px; text-align:left;">
+          <h3 style="text-align:center;">Mochila</h3>
+          ${mochila.length ? `<div class="lista-mochila">${mochila.map(l => `
+            <button type="button" class="item-mochila" data-item="${l.item.id}">
+              <span class="item-icone">${l.item.icone}</span>
+              <span>
+                <strong>${escaparHTML(l.item.nome)}</strong> ${l.quantidade > 1 ? `<em>×${l.quantidade}</em>` : ''}
+                <span class="item-desc">${escaparHTML(l.item.descricao)}</span>
+              </span>
+            </button>`).join('')}</div>`
+            : '<p style="color:var(--text-muted); text-align:center;">A mochila está vazia. A Loja de Elarion aceita ouro.</p>'}
+          <button class="btn btn-secondary btn-block mt-1" id="fechar-mochila">Fechar</button>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      overlay.querySelectorAll('.item-mochila').forEach(botao => {
+        botao.addEventListener('click', () => {
+          if (Recursos.usarItem(personagem, botao.dataset.item)) {
+            desenharRecursos();
+            document.body.removeChild(overlay);
+            irParaAbordagens(); // redesenha, caso o item mude modificadores
+          }
+        });
+      });
+      overlay.querySelector('#fechar-mochila').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+      });
+    }
+
+    /* ============================================================
+       INÍCIO
+       ============================================================ */
+    /* ============================================================
+       TUTORIAL DO ENCONTRO
+       Explica o loop na primeira vez que o aluno entra numa missão.
+       ============================================================ */
+    Tutorial.instalar('encontro', [
+      { titulo: 'Como funciona um encontro',
+        texto: 'Três etapas: você vê a cena, escolhe como agir, rola o dado — e só então responde ao desafio. '
+             + 'O dado não decide se você sabe a matéria: decide em que condições você vai enfrentá-la.' },
+
+      { alvo: '#barra-recursos',
+        titulo: 'Seus recursos',
+        texto: 'Determinação é o quanto você aguenta errar antes de recuar. Inspiração paga uma re-rolagem '
+             + 'quando o dado te trai. Ouro compra itens na Loja.' },
+
+      { alvo: '#area-figura',
+        titulo: 'Quem está na sua frente',
+        texto: 'Um NPC traz o problema; um inimigo cobra caro pelos seus erros. Leia a fala: quase sempre '
+             + 'tem pista do que fazer.' },
+
+      { alvo: '#texto-narrativa',
+        titulo: 'A cena',
+        texto: 'O que está acontecendo. Vale ler com atenção — a resposta do desafio costuma estar '
+             + 'escondida aqui dentro.' },
+
+      { titulo: 'O que vem depois',
+        texto: 'Ao clicar em "E agora?", você escolhe entre caminhos diferentes, cada um usando um atributo seu. '
+             + 'A dificuldade (CD) e os seus bônus aparecem antes de rolar: nada é escondido de você. '
+             + 'Tirar 20 apaga uma alternativa errada; falhar deixa o inimigo agir primeiro.' }
+    ], '#btn-tutorial');
+
+    desenharRecursos();
+    montarCena();
+  </script>
+</body>
+</html>

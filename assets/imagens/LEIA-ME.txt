@@ -1,0 +1,19 @@
+CRÔNICAS DE ELARION — assets/imagens
+
+CAPA DA PÁGINA INICIAL
+Salve a arte como:  capa-elarion.jpg   (nesta pasta)
+
+A página inicial já procura esse arquivo. Enquanto ele não existir, aparece
+uma caixa tracejada avisando — nada quebra.
+
+Formato ideal: 1920 x 820 pixels (proporção 21:9).
+Outra proporção funciona: a imagem é cortada pelo centro, um pouco acima,
+para preservar os rostos.
+
+A página aplica sozinha um escurecimento e uma vinheta sobre a capa, para
+que ela combine com o tema escuro do site. Não é preciso editar a arte: se
+ela estiver clara demais, o tratamento já resolve.
+
+OUTRAS IMAGENS
+Qualquer outro arquivo pode ser colocado aqui e referenciado nas páginas
+com o caminho  assets/imagens/nome-do-arquivo.jpg

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Barra de navegação — presente em todas as telas internas do jogador -->
+  <header class="navbar">
+    <a href="mapa.html" class="logo">Elarion</a>
+    <nav>
+      <a href="mapa.html" class="ativo">Mapa</a>
+      <a href="#" id="btn-tutorial">Tutorial</a>
+      <a href="loja.html">Loja</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="codex.html">Códex</a>
+      <a href="index.html" onclick="Estado.limparTudo()">Sair</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA 2 — MAPA DE ELARION
+       Mostra os 4 territórios. Cada um mostra quantas missões já
+       foram concluídas (ex: "1/2") e, se tiver 100% concluído,
+       fica com um visual "apagado" indicando que está completo.
+       ========================================================== -->
+  <main class="container largo">
+    <div class="text-center" style="margin-bottom:1.2rem;">
+      <h1 style="font-size:1.4rem;">Mapa de Elarion</h1>
+      <p style="color:var(--text-muted); font-size:0.9rem;">Escolha um território para iniciar sua missão</p>
+    </div>
+
+    <div class="map-grid" id="grid-territorios">
+      <!-- Preenchido dinamicamente pelo script, a partir de TERRITORIOS (dados-jogo.js) -->
+    </div>
+
+    <p class="text-center mt-2" id="aviso-conclusao" style="display:none;">
+      <a href="final.html" class="btn btn-primary">🏆 Você concluiu todos os territórios! Ver resultado final</a>
+    </p>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script>
+    // Protege a página: precisa estar logado como aluno e já ter um personagem.
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+
+    /** Desenha os 4 territórios, cada um com seu progresso (ex: 1/2 missões concluídas). */
+    function montarMapa() {
+      if (!personagem) return;
+      const grid = document.getElementById('grid-territorios');
+
+      grid.innerHTML = TERRITORIOS.map(territorio => {
+        const questsDoTerritorio = buscarQuestsDoTerritorio(territorio.id);
+        const concluidas = questsDoTerritorio.filter(q => personagem.missoesConcluidas.includes(q.id)).length;
+        const totalmenteConcluido = concluidas === questsDoTerritorio.length;
+
+        return `
+          <a href="missao.html?territorio=${territorio.id}" class="territorio ${totalmenteConcluido ? 'concluido' : ''}">
+            <span class="icone">${territorio.icone}</span>
+            <h3>${territorio.nome}</h3>
+            <span class="tema">${territorio.tema}</span>
+            <span class="progresso-mini">${concluidas}/${questsDoTerritorio.length} ${totalmenteConcluido ? '✓' : ''}</span>
+          </a>`;
+      }).join('');
+
+      // Mostra o link para a tela final se TODOS os territórios estiverem 100% concluídos.
+      const tudoConcluido = TERRITORIOS.every(t => {
+        const qs = buscarQuestsDoTerritorio(t.id);
+        return qs.every(q => personagem.missoesConcluidas.includes(q.id));
+      });
+      document.getElementById('aviso-conclusao').style.display = tudoConcluido ? 'block' : 'none';
+    }
+
+    montarMapa();
+  </script>
+
+  <footer class="footer-rodape">Crônicas de Elarion — RPG Educativo Digital</footer>
+  <script>
+    /* Tutorial da primeira tela do aluno. */
+    Tutorial.instalar('mapa', [
+      { titulo: 'Elarion é sua agora',
+        texto: 'Você é um herói com uma ficha: atributos, Determinação, Inspiração e ouro. '
+             + 'Cada território tem encontros esperando. Este guia leva um minuto.' },
+
+      { alvo: '.map-grid',
+        titulo: 'Os quatro territórios',
+        texto: 'Cada um cuida de um tipo de problema: lógica e números, convivência, sustentabilidade, '
+             + 'justiça. O contador mostra quantos encontros você já resolveu em cada um.' },
+
+      { alvo: '.territorio',
+        titulo: 'Entrar num território',
+        texto: 'Clique para enfrentar o próximo encontro em aberto. Você pode ir na ordem que quiser.' },
+
+      { alvo: 'a[href="loja.html"]',
+        titulo: 'A Loja',
+        texto: 'O ouro que você ganha compra itens que mudam o jogo: re-rolagens, bônus no dado, '
+             + 'uma alternativa errada apagada. Gastar na hora certa é parte da estratégia.' },
+
+      { alvo: 'a[href="perfil.html"]',
+        titulo: 'Sua ficha',
+        texto: 'Atributos, nível, mochila e insígnias. Vale olhar antes de entrar num território difícil.' }
+    ], '#btn-tutorial');
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mesa ao Vivo — Crônicas de Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mestre.html" class="logo">Painel do Mestre</a>
+    <nav>
+      <a href="mestre.html">Painel</a>
+      <a href="mesa-mestre.html" class="ativo">Mesa ao Vivo</a>
+      <a href="#" id="btn-tutorial">Tutorial</a>
+      <a href="index.html" onclick="Estado.limparTudo()">Sair</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA — MESA AO VIVO (dois painéis)
+
+       Esquerda  — a campanha: prólogo e a lista de checkpoints que o
+                   mestre marca conforme a turma avança. São os "beats"
+                   que o Matt Mercer usa no Critical Role: cenas-chave
+                   anotadas, improviso entre elas.
+       Direita   — status ao vivo de cada herói (nível, XP, ouro,
+                   Determinação, Inspiração) + o d20 do mestre e o
+                   sorteio de quem joga agora.
+       ========================================================== -->
+  <main class="container largo">
+
+    <div class="mesa-grid">
+
+      <!-- ===================== PAINEL ESQUERDO ===================== -->
+      <div>
+        <div class="card">
+          <p class="rotulo-cena">A campanha</p>
+          <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.6rem;">
+            <select id="seletor-campanha" style="flex:1; background:var(--bg-elev); color:var(--text);
+                    border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.5rem 0.7rem;"
+                    onchange="trocarCampanha(this.value)"></select>
+          </div>
+          <h2 style="font-size:1.1rem;" id="titulo-campanha">Crônicas de Elarion</h2>
+          <div class="narrativa" id="prologo-campanha" style="margin-top:0.7rem;"></div>
+        </div>
+
+        <div class="card">
+          <p class="rotulo-cena">Checkpoints</p>
+          <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Onde a turma está</h2>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.9rem;">
+            Clique para marcar como concluído. O próximo em aberto fica destacado.
+          </p>
+          <div id="lista-checkpoints"></div>
+          <p id="aviso-sem-checkpoint" style="font-size:0.85rem; color:var(--text-muted); display:none;">
+            Nenhum checkpoint cadastrado. Monte a sequência de cenas no Painel do Mestre,
+            em “História da Campanha”.
+          </p>
+        </div>
+
+        <div class="card">
+          <p class="rotulo-cena">Feitos da turma</p>
+          <h2 style="font-size:1.05rem; margin-bottom:0.7rem;">O que contaram sobre si</h2>
+          <div id="lista-feitos"></div>
+        </div>
+      </div>
+
+      <!-- ===================== PAINEL DIREITO ===================== -->
+      <div>
+        <div class="card">
+          <p class="rotulo-cena">Status ao vivo</p>
+          <h2 style="font-size:1.05rem; margin-bottom:0.3rem;">Heróis em mesa</h2>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.9rem;" id="fonte-herois"></p>
+          <div id="lista-herois"></div>
+          <button type="button" class="btn btn-secondary btn-block btn-sm mt-1" onclick="carregarHerois()">
+            Atualizar status
+          </button>
+        </div>
+
+        <div class="card">
+          <p class="rotulo-cena">Dado do mestre</p>
+          <div class="dado-mestre-box">
+            <div class="dado-resultado" id="dado-mestre">—</div>
+            <button type="button" class="btn btn-primary" onclick="rolarDadoDoMestre()">Rolar d20</button>
+          </div>
+          <div class="evento-sorteado" id="evento-mestre">
+            Role o dado para sortear um evento de mesa para a turma.
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="rotulo-cena">A vez de quem?</p>
+          <div class="text-center">
+            <div class="dado-resultado" id="aluno-sorteado" style="font-size:1.5rem; min-height:2rem;">—</div>
+            <button type="button" class="btn btn-outline" onclick="sortearAluno()">Sortear herói</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script>
+    exigirSessao('mestre');
+
+    let herois = []; // preenchido por carregarHerois()
+
+    /* ============================================================
+       PAINEL ESQUERDO — campanha e checkpoints
+       ============================================================ */
+    /** Lista as campanhas no seletor e marca a ativa. */
+    function desenharSeletorCampanhas() {
+      const ativa = Campanhas.idAtiva();
+      document.getElementById('seletor-campanha').innerHTML = Campanhas.lista().map(c => {
+        const nivel = rotuloDoNivel(c);
+        return `
+        <option value="${c.id}" ${c.id === ativa ? 'selected' : ''}>
+          ${escaparHTML(c.nome)}${c.turma ? ' · ' + escaparHTML(c.turma) : ''}${nivel ? ' — ' + escaparHTML(nivel) : ''}
+        </option>`;
+      }).join('');
+    }
+
+    /** Troca a campanha em uso e redesenha a mesa inteira. */
+    function trocarCampanha(id) {
+      Campanhas.definirAtiva(id);
+      desenharCampanha();
+      desenharCheckpoints();
+      carregarHerois();
+      mostrarToast('Campanha trocada.');
+    }
+
+    function desenharCampanha() {
+      const campanha = Campanha.get() || {};
+      document.getElementById('titulo-campanha').textContent =
+        campanha.titulo || 'Crônicas de Elarion';
+      document.getElementById('prologo-campanha').textContent =
+        campanha.prologo || 'Nenhum prólogo escrito ainda. O Painel do Mestre tem o editor.';
+    }
+
+    function desenharCheckpoints() {
+      const campanha = Campanha.get() || {};
+      const checkpoints = campanha.checkpoints || [];
+      const alvo = document.getElementById('lista-checkpoints');
+
+      document.getElementById('aviso-sem-checkpoint').style.display = checkpoints.length ? 'none' : 'block';
+
+      // O "atual" é o primeiro ainda em aberto: é onde a turma está agora.
+      const indiceAtual = checkpoints.findIndex(c => !c.concluido);
+
+      alvo.innerHTML = checkpoints.map((c, i) => `
+        <button type="button"
+                class="checkpoint ${c.concluido ? 'concluido' : ''} ${i === indiceAtual ? 'atual' : ''}"
+                onclick="alternarCheckpoint(${i})">
+          <span class="checkpoint-marca">${c.concluido ? '✓' : ''}</span>
+          <span>
+            <span class="checkpoint-titulo">${escaparHTML(c.titulo)}</span>
+            ${c.nota ? `<span class="checkpoint-nota">${escaparHTML(c.nota)}</span>` : ''}
+          </span>
+        </button>`).join('');
+    }
+
+    /** Marca/desmarca um checkpoint e salva na campanha. */
+    function alternarCheckpoint(indice) {
+      const campanha = Campanha.get() || {};
+      if (!campanha.checkpoints || !campanha.checkpoints[indice]) return;
+
+      campanha.checkpoints[indice].concluido = !campanha.checkpoints[indice].concluido;
+      Campanha.salvar(campanha);
+      desenharCheckpoints();
+    }
+
+    /** Feitos: as frases que os alunos escreveram após um crítico. */
+    function desenharFeitos() {
+      const todos = [];
+      herois.forEach(h => {
+        if (!h.personagem) return;
+        (h.personagem.feitos || []).forEach(f => todos.push({ heroi: h.jogador.nome, ...f }));
+      });
+
+      const alvo = document.getElementById('lista-feitos');
+      if (!todos.length) {
+        alvo.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted);">'
+          + 'Ainda nenhum. Quando um aluno tira 20 natural, ele conta como fez — e aparece aqui.</p>';
+        return;
+      }
+
+      alvo.innerHTML = todos.slice(-6).reverse().map(f => `
+        <div class="feito">
+          <span class="feito-autor">${escaparHTML(f.heroi)} · ${escaparHTML(f.quest)}</span>
+          <p>“${escaparHTML(f.texto)}”</p>
+        </div>`).join('');
+    }
+
+    /* ============================================================
+       PAINEL DIREITO — status dos heróis
+       ============================================================
+       Duas fontes: os heróis salvos NESTE navegador (laboratório, a
+       turma joga na mesma máquina) e a aba Progresso da planilha
+       (alunos jogando de casa).
+       ============================================================ */
+    function carregarHerois() {
+      const campanhaId = Campanhas.idAtiva();
+      herois = elencoDaCampanha(campanhaId);
+      desenhaListaHerois('elenco da campanha');
+      desenharFeitos();
+
+      lerDoGoogleSheets('progresso').then(linhas => {
+        if (!linhas.length) return;
+
+        /* A planilha guarda uma linha por encontro resolvido, de TODAS as
+           campanhas. Duas regras mantêm a mesa limpa:
+
+           1. Só interessam linhas desta campanha (quando a linha trouxer o
+              id; linhas antigas, sem ele, passam pelo nome).
+           2. Só entram pessoas que estão no elenco. Quem aparece na planilha
+              mas não foi matriculado aqui é de outra turma — e não tem por
+              que ocupar a mesa do professor. */
+        const maisRecente = {};
+        linhas.forEach(l => {
+          if (!l.nome) return;
+          if (l.campanhaId && l.campanhaId !== campanhaId) return;
+          maisRecente[String(l.nome).toLowerCase()] = l;
+        });
+
+        herois.forEach(linha => {
+          const remota = maisRecente[String(linha.jogador.nome).toLowerCase()];
+          if (!remota) return;
+
+          // Sem ficha local (aluno joga de casa): a planilha preenche o status.
+          if (linha.semFicha) {
+            linha.remoto = true;
+            linha.personagem = {
+              nome: '—', classeId: null,
+              xp: Number(remota.xp) || 0, ouro: Number(remota.ouro) || 0,
+              determinacao: remota.determinacao, determinacaoMaxima: 6,
+              inspiracao: remota.inspiracao,
+              missoesConcluidas: new Array(Number(remota.missoes) || 0),
+              badges: [], feitos: []
+            };
+            linha.semFicha = false;
+          }
+        });
+
+        desenhaListaHerois('elenco + planilha');
+      });
+    }
+
+    function desenhaListaHerois(fonte) {
+      document.getElementById('fonte-herois').textContent =
+        herois.length ? `${herois.length} no elenco — fonte: ${fonte}.`
+                      : 'Elenco vazio. Os alunos entram automaticamente ao fazer login.';
+
+      document.getElementById('lista-herois').innerHTML = herois.map(linha => {
+        const p = linha.personagem;
+        const jogador = linha.jogador;
+
+        // Matriculado, mas ainda não criou o herói.
+        if (linha.semFicha || !p) {
+          return `
+            <div class="aluno-card">
+              <div class="aluno-linha">
+                <span class="aluno-nome">${escaparHTML(jogador.nome)}</span>
+                <span class="aluno-classe">sem personagem</span>
+              </div>
+              <div class="aluno-stats"><span>Entrou, mas ainda não criou o herói.</span></div>
+            </div>`;
+        }
+
+        const classe = p.classeId ? buscarClasse(p.classeId) : null;
+        const nivel = calcularNivel(p.xp);
+        const nomeHeroi = p.nome && p.nome !== '—' ? p.nome : null;
+
+        return `
+          <div class="aluno-card">
+            <div class="aluno-linha">
+              <span class="aluno-nome">
+                ${escaparHTML(jogador.nome)}
+                ${nomeHeroi ? `<span class="aluno-heroi">como ${escaparHTML(nomeHeroi)}</span>` : ''}
+              </span>
+              <span class="aluno-classe">
+                ${classe ? escaparHTML(classe.nome) : (linha.remoto ? 'remoto' : '—')} · Nível ${nivel.nivel}
+              </span>
+            </div>
+            <div class="aluno-stats">
+              <span>XP <b>${p.xp}</b></span>
+              <span class="ouro">Ouro <b>${p.ouro}</b></span>
+              <span class="det">Determinação <b>${p.determinacao}${typeof p.determinacao === 'number' ? '/' + p.determinacaoMaxima : ''}</b></span>
+              <span class="insp">Inspiração <b>${p.inspiracao}</b></span>
+              <span>Encontros <b>${(p.missoesConcluidas || []).length}</b></span>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    /* ============================================================
+       FERRAMENTAS DE MESA
+       ============================================================ */
+    function rolarDadoDoMestre() {
+      const valor = Math.floor(Math.random() * 20) + 1;
+      const el = document.getElementById('dado-mestre');
+
+      el.textContent = valor;
+      el.classList.remove('critico-sucesso', 'critico-falha');
+      if (valor === 20) el.classList.add('critico-sucesso');
+      if (valor === 1) el.classList.add('critico-falha');
+
+      document.getElementById('evento-mestre').textContent = buscarEventoMestre(valor);
+    }
+
+    function sortearAluno() {
+      if (!herois.length) {
+        mostrarToast('Nenhum herói em mesa ainda.');
+        return;
+      }
+      const sorteado = herois[Math.floor(Math.random() * herois.length)];
+      document.getElementById('aluno-sorteado').textContent = sorteado.jogador.nome;
+    }
+
+    /* ============================================================
+       INÍCIO
+       ============================================================ */
+    const PASSOS_MESA = [
+      { titulo: 'Esta é a tela da aula',
+        texto: 'Deixe-a aberta enquanto a turma joga. À esquerda, por onde a história vai; '
+             + 'à direita, como cada aluno está.' },
+
+      { alvo: '#seletor-campanha',
+        titulo: 'A campanha em uso',
+        texto: 'Troque aqui se você conduz mais de uma turma. A mesa inteira muda junto.' },
+
+      { alvo: '#lista-checkpoints',
+        titulo: 'Os checkpoints',
+        texto: 'Clique para marcar como concluído. O próximo em aberto fica destacado — é onde a turma está. '
+             + 'A nota embaixo de cada um é sua, os alunos não veem.' },
+
+      { alvo: '#lista-herois',
+        titulo: 'Status ao vivo',
+        texto: 'Nome do aluno, o herói que ele criou, nível, ouro, Determinação e Inspiração. '
+             + 'Determinação baixa significa que alguém está prestes a recuar — boa hora para intervir na narrativa.' },
+
+      { alvo: '#dado-mestre',
+        titulo: 'O seu d20',
+        texto: 'Role para sortear um evento de mesa: revisão rápida, bônus de XP, desafio em grupo. '
+             + 'Serve para mudar o ritmo quando a turma dispersa.' },
+
+      { alvo: '#aluno-sorteado',
+        titulo: 'De quem é a vez',
+        texto: 'Sorteia um herói do elenco. Útil para distribuir a palavra sem parecer escolha pessoal.' },
+
+      { alvo: '#lista-feitos',
+        titulo: 'Os feitos da turma',
+        texto: 'Quando um aluno tira 20 natural, ele escreve como seu herói fez aquilo. A frase vem parar aqui — '
+             + 'leia em voz alta, é o melhor momento da aula.' }
+    ];
+
+    Tutorial.instalar('mesa', PASSOS_MESA, '#btn-tutorial');
+
+    desenharSeletorCampanhas();
+    desenharCampanha();
+    desenharCheckpoints();
+    carregarHerois();
+  </script>
+</body>
+</html>

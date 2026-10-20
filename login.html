@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar em Elarion</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================================
+       TELA 1 — LOGIN / ESCOLHA DE PAPEL
+       Funciona como o "modal" pedido: o jogador escolhe entre
+       Aluno/Jogador e Mestre/Professor antes de preencher nome
+       e código da turma. Não existe senha de verdade (o projeto
+       é gratuito e não tem banco de dados de usuários) — o
+       "código da turma" serve apenas para agrupar os jogadores
+       na planilha do Google Sheets (ver core.js).
+       ========================================================== -->
+  <main class="container">
+    <div class="text-center" style="margin-bottom:1.5rem;">
+      <h1 style="font-size:1.5rem;">Portal dos Heróis</h1>
+      <p style="color:var(--text-muted); font-size:0.9rem;">Escolha seu papel para ingressar na jornada</p>
+    </div>
+
+    <!-- Seletor de papel: Aluno x Mestre -->
+    <div class="role-toggle" role="group" aria-label="Tipo de usuário">
+      <button type="button" class="role-btn ativo" id="btn-papel-aluno" onclick="selecionarPapel('aluno')">
+        <span class="icone">🧙‍♂️</span>
+        <strong>Sou Aluno</strong>
+        <span class="legenda">Jogador</span>
+      </button>
+      <button type="button" class="role-btn" id="btn-papel-mestre" onclick="selecionarPapel('mestre')">
+        <span class="icone">📜</span>
+        <strong>Sou Professor</strong>
+        <span class="legenda">Mestre</span>
+      </button>
+    </div>
+
+    <form class="card" id="form-login" onsubmit="return enviarLogin(event)">
+      <p class="aviso-demo">
+        🔑 <strong>Modo demonstração:</strong> <strong>admin</strong> / <strong>admin</strong>
+        (Aluno ou Professor) abre as telas já preenchidas.<br>
+        Para testar o fluxo do zero, entre com <strong>qualquer outro nome</strong> e senha em branco.
+        Cada aluno tem um herói por campanha.
+      </p>
+      <div class="form-group">
+        <label for="campo-nome">Seu nome ou usuário</label>
+        <input type="text" id="campo-nome" placeholder="Ex: Ana, Pedro... ou admin" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="campo-senha">Senha <span style="text-transform:none; letter-spacing:0; color:var(--text-faint);">(só para a conta admin)</span></label>
+        <input type="password" id="campo-senha" placeholder="Deixe em branco se for aluno da turma" autocomplete="current-password">
+      </div>
+      <!-- Só para aluno: a campanha em que ele vai jogar.
+           É o que impede misturar turmas — cada aluno entra na aventura
+           da sala dele, e a ficha fica presa a ela. -->
+      <div class="form-group" id="grupo-campanha">
+        <label for="campo-campanha">Campanha</label>
+        <select id="campo-campanha" onchange="aoTrocarCampanha()"></select>
+        <p class="dica-campo" id="dica-campanha"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="campo-turma">Código da turma</label>
+        <input type="text" id="campo-turma" placeholder="Ex: 7A-2026" required autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar em Elarion</button>
+    </form>
+
+    <p class="text-center mt-2">
+      <a href="index.html" style="font-size:0.85rem;">← Voltar à página inicial</a>
+    </p>
+  </main>
+
+  <!-- Ordem de carregamento dos scripts:
+       1) dados-jogo.js -> banco de dados do jogo (não é usado nesta página, mas mantemos
+          a ordem padrão em todas as páginas por consistência)
+       2) core.js       -> funções genéricas (Estado, dados, toast...)
+       3) script da própria página, no fim do arquivo -->
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script>
+    // Guarda qual botão (Aluno/Mestre) está selecionado no momento.
+    let papelSelecionado = 'aluno';
+
+    montarSeletorCampanhas();
+
+    /** Alterna o botão ativo quando o usuário clica em "Sou Aluno" / "Sou Professor". */
+    function selecionarPapel(papel) {
+      papelSelecionado = papel;
+      document.getElementById('btn-papel-aluno').classList.toggle('ativo', papel === 'aluno');
+      document.getElementById('btn-papel-mestre').classList.toggle('ativo', papel === 'mestre');
+
+      // O professor não escolhe campanha aqui: ele troca pelo painel.
+      document.getElementById('grupo-campanha').style.display = papel === 'aluno' ? 'block' : 'none';
+      aoTrocarCampanha();
+    }
+
+    /* ------------------------------------------------------------
+       SELETOR DE CAMPANHA
+       Lista as campanhas que o professor criou neste navegador. O aluno
+       escolhe a dele e confirma com o código da turma — assim ninguém
+       entra na aventura de outra sala por engano.
+       ------------------------------------------------------------ */
+    function montarSeletorCampanhas() {
+      const campanhas = Campanhas.paraLogin();
+      const alvo = document.getElementById('campo-campanha');
+
+      alvo.innerHTML = campanhas.map(c => {
+        const nivel = rotuloDoNivel(c);
+        return `<option value="${c.id}">${escaparHTML(c.nome)}${nivel ? ' — ' + escaparHTML(nivel) : ''}</option>`;
+      }).join('');
+
+      aoTrocarCampanha();
+    }
+
+    /** Campanha escolhida no seletor. */
+    function campanhaEscolhida() {
+      const id = document.getElementById('campo-campanha').value;
+      return id ? Campanhas.get(id) : null;
+    }
+
+    /**
+     * Ao trocar de campanha, o campo de turma passa a esperar o código
+     * daquela campanha. Campanha sem código aceita qualquer turma.
+     */
+    function aoTrocarCampanha() {
+      const campanha = campanhaEscolhida();
+      const dica = document.getElementById('dica-campanha');
+      const campoTurma = document.getElementById('campo-turma');
+
+      if (papelSelecionado !== 'aluno' || !campanha) {
+        dica.textContent = '';
+        campoTurma.placeholder = 'Ex: 7A-2026';
+        return;
+      }
+
+      if (campanha.turma) {
+        dica.textContent = 'Esta campanha é da turma ' + campanha.turma + '.';
+        campoTurma.placeholder = campanha.turma;
+      } else {
+        dica.textContent = 'Esta campanha não tem código de turma definido.';
+        campoTurma.placeholder = 'Ex: 7A-2026';
+      }
+    }
+
+    /** Processa o envio do formulário de login. */
+    function enviarLogin(evento) {
+      evento.preventDefault(); // impede o recarregamento padrão da página
+
+      const nome = document.getElementById('campo-nome').value.trim();
+      const senha = document.getElementById('campo-senha').value;
+      const turma = document.getElementById('campo-turma').value.trim();
+
+      // Conta de demonstração: admin/admin entra como aluno OU como mestre.
+      const admin = ehContaDemo(nome, senha);
+
+      // Aluno precisa de uma campanha, e o código da turma tem que bater.
+      let campanha = null;
+      if (papelSelecionado === 'aluno') {
+        campanha = campanhaEscolhida();
+
+        if (!campanha) {
+          mostrarToast('Nenhuma campanha disponível. Peça ao professor para criar uma.');
+          return false;
+        }
+
+        if (campanha.turma && campanha.turma.toLowerCase() !== turma.toLowerCase()) {
+          mostrarToast('O código da turma não confere com esta campanha.');
+          return false;
+        }
+      }
+
+      // Se digitou "admin" mas errou a senha, avisa e não deixa entrar.
+      if (!admin && nome.toLowerCase() === 'admin') {
+        mostrarToast('Senha incorreta para a conta admin.');
+        return false;
+      }
+
+      // Salva a sessão no localStorage (ver Estado.salvarSessao em core.js).
+      Estado.salvarSessao({
+        papel: papelSelecionado,
+        nome, turma, admin,
+        campanhaId: campanha ? campanha.id : ''
+      });
+
+      // Aluno entra para o elenco da campanha ativa. A chave é nome+turma,
+      // a mesma da ficha — é o que impede o painel de duplicar a pessoa.
+      if (papelSelecionado === 'aluno') {
+        Campanhas.matricular({ chave: Estado.apelidoJogador(), nome, turma }, campanha.id);
+      }
+
+      // Admin entrando como aluno já recebe um personagem pronto, para que
+      // Perfil, Insígnias e tela Final apareçam preenchidos na apresentação.
+      if (admin && papelSelecionado === 'aluno' && !Estado.getPersonagem()) {
+        Estado.salvarPersonagem(criarPersonagemDemo());
+      }
+
+      // Registra o acesso na planilha do Google (evidência de uso — ver README.md).
+      // Funciona em segundo plano; se o Sheets não estiver configurado, não trava o jogo.
+      registrarNoGoogleSheets('acesso', { nome, turma, papel: papelSelecionado });
+
+      // Decide para onde mandar o usuário:
+      if (papelSelecionado === 'mestre') {
+        window.location.href = 'mestre.html';
+      } else {
+        // Se o aluno já tem um personagem salvo, vai direto para o mapa;
+        // senão, primeiro precisa criar o herói.
+        const personagem = Estado.getPersonagem();
+        window.location.href = personagem ? 'mapa.html' : 'personagem.html';
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resultado da Missão</title>
+  <link rel="icon" href="assets/imagens/marca-elarion-simples.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="mapa.html" class="logo">🏰 Elarion</a>
+    <nav>
+      <a href="mapa.html">🗺️ Mapa</a>
+      <a href="perfil.html">👤 Perfil</a>
+    </nav>
+  </header>
+
+  <!-- ==========================================================
+       TELA 4 — RESULTADO DA MISSÃO
+       Lê o objeto salvo em Estado.salvarUltimoResultado (dentro de
+       missao.html) e mostra um resumo: se foi sucesso total, parcial
+       ou crítico, quanto XP/ouro foi ganho, e o resultado da rolagem.
+       ========================================================== -->
+  <main class="container result-topo">
+    <span class="desfecho-selo" id="selo-faixa"></span>
+    <div class="feedback-icon" id="icone-resultado"></div>
+    <h1 id="titulo-resultado" style="font-size:1.3rem;"></h1>
+
+    <div class="narrativa" style="text-align:left; margin-top:0.9rem;" id="mensagem-resultado"></div>
+
+    <p id="abordagem-usada" style="font-size:0.82rem; color:var(--text-faint); margin-bottom:0.8rem;"></p>
+
+    <div class="xp-box" id="caixa-recompensa">
+      <div>
+        <span class="pontos" id="xp-ganho"></span>
+        <span class="rotulo">Experiência</span>
+      </div>
+      <div>
+        <span class="pontos" id="ouro-ganho"></span>
+        <span class="rotulo">Ouro</span>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:left;" id="caixa-rolagem">
+      <p class="rotulo-desafio">A rolagem</p>
+      <p style="font-size:0.9rem; color:var(--text-muted);">
+        d20 deu <strong id="detalhe-dado"></strong>, total <strong id="detalhe-total"></strong>
+        contra dificuldade <strong id="detalhe-cd"></strong>.
+      </p>
+    </div>
+
+    <!-- Crítico: o jogador narra o próprio desfecho.
+         É o "How do you want to do this?" do Critical Role. -->
+    <div class="card" id="caixa-narracao" style="display:none; text-align:left;">
+      <p class="rotulo-desafio">Conte como foi</p>
+      <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.7rem;">
+        Você tirou 20. Descreva em uma frase como seu herói fez isso — vai para o
+        Códex da turma, assinado por você.
+      </p>
+      <div class="form-group">
+        <textarea id="campo-narracao" rows="2"
+          placeholder="Ex: Subi na mesa, apontei para o terceiro baú e esperei o silêncio."></textarea>
+      </div>
+      <button type="button" class="btn btn-outline btn-block btn-sm" onclick="salvarNarracao()">
+        Registrar no Códex
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-block" id="btn-continuar">Continuar</button>
+    <a href="loja.html" class="btn btn-secondary btn-block mt-1">Ir à Loja</a>
+    <a href="perfil.html" class="btn btn-outline btn-block mt-1">Ver Ficha</a>
+  </main>
+
+  <script src="js/dados-jogo.js"></script>
+  <script src="js/core.js"></script>
+  <script>
+    exigirSessao('aluno');
+    const personagem = exigirPersonagem();
+    const resultado = Estado.getUltimoResultado();
+
+    // Página aberta direto, sem ter jogado: volta ao mapa.
+    if (!resultado) {
+      window.location.href = 'mapa.html';
+    } else if (resultado.recuou) {
+      montarRecuo();
+    } else {
+      montarVitoria();
+    }
+
+    /* ------------------------------------------------------------
+       RECUO — a Determinação acabou. Não é game over: é uma cena de
+       volta ao acampamento, com uma dica para a próxima tentativa.
+       ------------------------------------------------------------ */
+    function montarRecuo() {
+      document.getElementById('selo-faixa').textContent = 'Recuo';
+      document.getElementById('selo-faixa').style.color = 'var(--danger)';
+      document.getElementById('icone-resultado').textContent = '🩹';
+      document.getElementById('titulo-resultado').textContent = resultado.questTitulo;
+      document.getElementById('mensagem-resultado').textContent = resultado.mensagem;
+      document.getElementById('abordagem-usada').textContent = resultado.dica || '';
+
+      document.getElementById('caixa-recompensa').style.display = 'none';
+      document.getElementById('caixa-rolagem').style.display = 'none';
+      document.getElementById('btn-continuar').textContent = 'Voltar ao Mapa';
+    }
+
+    /* ------------------------------------------------------------
+       ENCONTRO RESOLVIDO
+       ------------------------------------------------------------ */
+    function montarVitoria() {
+      const icones = {
+        'critico': '⚔️', 'sucesso': '✦', 'falha': '🌫️', 'falha-critica': '💀'
+      };
+      const cores = {
+        'critico': 'var(--accent)', 'sucesso': 'var(--success)',
+        'falha': 'var(--danger)', 'falha-critica': '#F08080'
+      };
+
+      document.getElementById('selo-faixa').textContent = resultado.rotuloFaixa || '';
+      document.getElementById('selo-faixa').style.color = cores[resultado.faixa] || 'var(--text-muted)';
+      document.getElementById('icone-resultado').textContent = icones[resultado.faixa] || '✦';
+      document.getElementById('titulo-resultado').textContent = resultado.questTitulo;
+      document.getElementById('mensagem-resultado').textContent = resultado.mensagem;
+
+      document.getElementById('abordagem-usada').textContent = resultado.abordagem
+        ? 'Você escolheu: ' + resultado.abordagem
+        : '';
+
+      document.getElementById('xp-ganho').textContent = '+' + resultado.xpGanho;
+      document.getElementById('ouro-ganho').textContent = '+' + resultado.ouroGanho;
+      document.getElementById('detalhe-dado').textContent = resultado.valorDado;
+      document.getElementById('detalhe-total').textContent = resultado.total;
+      document.getElementById('detalhe-cd').textContent = resultado.cd;
+
+      if (resultado.pedirNarracao) {
+        document.getElementById('caixa-narracao').style.display = 'block';
+      }
+    }
+
+    /** Guarda a frase do jogador na ficha dele; a Mesa ao Vivo lê de lá. */
+    function salvarNarracao() {
+      const texto = document.getElementById('campo-narracao').value.trim();
+      if (!texto) {
+        mostrarToast('Escreva uma frase antes de registrar.');
+        return;
+      }
+
+      personagem.feitos.push({
+        quest: resultado.questTitulo,
+        texto,
+        data: new Date().toISOString()
+      });
+      Estado.salvarPersonagem(personagem);
+
+      document.getElementById('caixa-narracao').innerHTML =
+        '<p class="rotulo-desafio">Registrado no Códex</p>'
+        + '<p style="font-style:italic; color:var(--text-muted);">“' + escaparHTML(texto) + '”</p>';
+      mostrarToast('Seu feito entrou para o Códex da turma.');
+    }
+
+    document.getElementById('btn-continuar').addEventListener('click', () => {
+      window.location.href = 'mapa.html';
+    });
+  </script>
+</body>
+</html>
