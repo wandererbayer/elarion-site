@@ -105,13 +105,36 @@
        entra na aventura de outra sala por engano.
        ------------------------------------------------------------ */
     function montarSeletorCampanhas() {
+      const alvo = document.getElementById('campo-campanha');
+
+      // Enquanto a planilha responde, mostra as campanhas que já estão aqui.
+      desenharOpcoes();
+
+      alvo.disabled = true;
+      document.getElementById('dica-campanha').textContent = 'Buscando as campanhas do professor…';
+
+      /* Busca as campanhas na planilha. É isto que faz a campanha criada no
+         computador do professor aparecer no computador do aluno — antes, o
+         seletor só enxergava o localStorage deste navegador. */
+      Campanhas.sincronizar().then(() => {
+        alvo.disabled = false;
+        desenharOpcoes();
+      });
+    }
+
+    /** Redesenha as opções a partir do que está salvo neste navegador. */
+    function desenharOpcoes() {
       const campanhas = Campanhas.paraLogin();
       const alvo = document.getElementById('campo-campanha');
 
-      alvo.innerHTML = campanhas.map(c => {
-        const nivel = rotuloDoNivel(c);
-        return `<option value="${c.id}">${escaparHTML(c.nome)}${nivel ? ' — ' + escaparHTML(nivel) : ''}</option>`;
-      }).join('');
+      if (!campanhas.length) {
+        alvo.innerHTML = '<option value="">— nenhuma campanha disponível —</option>';
+      } else {
+        alvo.innerHTML = campanhas.map(c => {
+          const nivel = rotuloDoNivel(c);
+          return `<option value="${c.id}">${escaparHTML(c.nome)}${nivel ? ' — ' + escaparHTML(nivel) : ''}</option>`;
+        }).join('');
+      }
 
       aoTrocarCampanha();
     }
@@ -131,8 +154,15 @@
       const dica = document.getElementById('dica-campanha');
       const campoTurma = document.getElementById('campo-turma');
 
-      if (papelSelecionado !== 'aluno' || !campanha) {
+      if (papelSelecionado !== 'aluno') {
         dica.textContent = '';
+        campoTurma.placeholder = 'Ex: 7A-2026';
+        return;
+      }
+
+      if (!campanha) {
+        dica.textContent = 'Nenhuma campanha publicada ainda. '
+          + 'Peça ao professor para criar a campanha no Painel do Mestre.';
         campoTurma.placeholder = 'Ex: 7A-2026';
         return;
       }
@@ -200,7 +230,11 @@
 
       // Registra o acesso na planilha do Google (evidência de uso — ver README.md).
       // Funciona em segundo plano; se o Sheets não estiver configurado, não trava o jogo.
-      registrarNoGoogleSheets('acesso', { nome, turma, papel: papelSelecionado });
+      registrarNoGoogleSheets('acesso', {
+        nome, turma, papel: papelSelecionado,
+        // Sem isto o painel do professor não sabe a qual campanha o aluno entrou.
+        campanhaId: campanha ? campanha.id : ''
+      });
 
       // Decide para onde mandar o usuário:
       if (papelSelecionado === 'mestre') {

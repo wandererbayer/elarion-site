@@ -595,6 +595,13 @@ const Campanhas = {
       return lista[0].id;
     }
 
+    /* Só o professor cria campanha. O aluno que chegasse aqui ganhava uma
+       "Campanha 1" inventada no próprio navegador — era por isso que ele via
+       uma aventura que o professor nunca tinha criado. Agora ele fica sem
+       campanha e a tela de login explica o que fazer. */
+    const sessao = Estado.getSessao();
+    if (sessao && sessao.papel === 'aluno') return '';
+
     return this.migrarOuCriar();
   },
 
@@ -630,6 +637,46 @@ const Campanhas = {
   /** Campanhas que aceitam novos alunos, para o seletor do login. */
   paraLogin() {
     return this.lista().filter(c => c && c.id);
+  },
+
+  /**
+   * Traz as campanhas da planilha para este navegador.
+   *
+   * Sem isto, a campanha só existia no computador do professor: o aluno
+   * abria o site em outra máquina e não achava nada. A planilha é o ponto
+   * de encontro — o professor publica ao salvar, o aluno lê ao entrar.
+   *
+   * Quem está mais atualizado vence: uma edição local ainda não enviada
+   * não é sobrescrita pela cópia antiga do servidor.
+   *
+   * @returns {Promise<Array>} as campanhas já mescladas, em ordem de criação
+   */
+  sincronizar() {
+    return lerDoGoogleSheets('campanhas')
+      .then(lista => { this.mesclarDoServidor(lista); return this.lista(); })
+      .catch(() => this.lista());
+  },
+
+  /** Mescla uma lista vinda da planilha com o que já existe aqui. */
+  mesclarDoServidor(lista) {
+    if (!Array.isArray(lista) || !lista.length) return;
+
+    const todas = this.todas();
+    lista.forEach(remota => {
+      if (!remota || !remota.id) return;
+      const local = todas[remota.id];
+
+      // Local mais novo que o servidor: mantém o local (edição em andamento).
+      if (local && (local.atualizadaEm || '') > (remota.atualizadaEm || '')) return;
+
+      todas[remota.id] = Object.assign({}, local || {}, remota, {
+        // O elenco local não vem da planilha; preserva o que já havia.
+        jogadores: (local && local.jogadores) || [],
+        criadaEm: (local && local.criadaEm) || remota.atualizadaEm || new Date().toISOString()
+      });
+    });
+
+    this.gravarTodas(todas);
   },
 
   definirAtiva(id) {
@@ -696,9 +743,15 @@ const Campanhas = {
       }
     }
 
+    campanha.atualizadaEm = campanha.criadaEm;
+
     todas[id] = campanha;
     this.gravarTodas(todas);
     this.definirAtiva(id);
+    /* Publica já na criação. Antes, a campanha só ia para a planilha quando o
+       professor salvava a história — se ele criasse a campanha e fosse dar
+       aula, o aluno não encontrava nada no seletor do login. */
+    registrarNoGoogleSheets('campanha', campanha);
     return campanha;
   },
 

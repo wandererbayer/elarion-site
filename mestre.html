@@ -714,9 +714,50 @@
 
     /* ---------- Elenco ---------- */
 
+    /* Alunos lidos da aba Acessos, por id de campanha. O elenco do
+       localStorage só conhece quem entrou NESTE navegador — os alunos
+       da sala entram nos computadores deles, então é a planilha que
+       sabe quem apareceu. */
+    let alunosDaPlanilha = [];
+
+    /** Busca os acessos na planilha e redesenha o elenco com eles. */
+    function sincronizarElenco() {
+      return lerDoGoogleSheets('alunos').then(lista => {
+        alunosDaPlanilha = Array.isArray(lista) ? lista : [];
+        desenharElenco();
+      });
+    }
+
+    /**
+     * Junta quem a planilha viu nesta campanha com quem já está no elenco
+     * local, sem repetir ninguém. A chave é a mesma da ficha (nome|turma).
+     */
+    function elencoCompleto() {
+      const linhas = elencoDaCampanha();
+      const vistos = {};
+      linhas.forEach(l => { vistos[l.chave] = true; });
+
+      const campanha = Campanhas.ativa() || {};
+      const turma = (campanha.turma || '').toLowerCase();
+
+      alunosDaPlanilha
+        .filter(a => a && a.papel === 'aluno')
+        .filter(a => (a.campanhaId ? a.campanhaId === campanha.id
+                                   : turma && (a.turma || '').toLowerCase() === turma))
+        .forEach(a => {
+          const chave = (a.nome + '|' + a.turma).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          if (vistos[chave]) return;
+          vistos[chave] = true;
+          // Sem ficha aqui: o personagem dele está no navegador DELE.
+          linhas.push({ chave, jogador: { nome: a.nome, turma: a.turma }, personagem: null, semFicha: true });
+        });
+
+      return linhas;
+    }
+
     /** Uma linha por aluno, com checkbox para as ações em massa. */
     function desenharElenco() {
-      const elenco = elencoDaCampanha();
+      const elenco = elencoCompleto();
       const alvo = document.getElementById('lista-elenco');
 
       if (!elenco.length) {
@@ -728,6 +769,7 @@
         alvo.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); line-height:1.55;">'
           + 'Ninguém matriculado <strong>nesta campanha</strong> ainda. '
           + 'O aluno entra pela tela de login, escolhe esta campanha no seletor e confirma o código da turma. '
+          + 'A lista vem da planilha e pode levar alguns segundos depois do acesso dele. '
           + codigo
           + '</p>';
         return;
@@ -736,7 +778,8 @@
       alvo.innerHTML = elenco.map(linha => {
         const p = linha.personagem;
         const nivel = p ? calcularNivel(p.xp).nivel : '—';
-        const heroi = p && p.nome ? p.nome : 'sem personagem';
+        const heroi = p && p.nome ? p.nome
+                    : (linha.semFicha ? 'ficha no computador dele' : 'sem personagem');
 
         return `
           <label class="linha-check elenco-linha">
@@ -859,6 +902,16 @@
     montarCamposAbordagens();
     desenharElenco();
     listarItensCriados();
+
+    /* Puxa da planilha o que foi criado/acessado em outros computadores:
+       as campanhas (caso o professor abra o painel em outra máquina) e os
+       alunos que entraram. Roda depois do desenho inicial para a tela não
+       ficar esperando a rede. */
+    Campanhas.sincronizar().then(() => {
+      desenharSelectsCampanha();
+      montarCamposCapitulos();
+      return sincronizarElenco();
+    });
   </script>
 </body>
 </html>

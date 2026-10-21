@@ -25,17 +25,18 @@
    Se o número vier diferente do que está aqui, a implantação está velha —
    vá em Implantar > Gerenciar implantações > editar (lápis) > Versão:
    "Nova versão" > Implantar. Salvar o código NÃO atualiza o Web App. */
-var VERSAO = '2026-10-18d';
+var VERSAO = '2026-10-21a';
 
 var PLANILHA_ID = '1mXuGu9zMVaZJsOGvKOw1v_MRV4YUUWAwV-14QX_zA6Y';
 
 /* Cabeçalho de cada aba. A chave é o nome da aba. */
 var ABAS = {
-  Acessos:   ['Data', 'Nome', 'Turma', 'Papel'],
+  Acessos:   ['Data', 'Nome', 'Turma', 'Papel', 'ID da campanha'],
   Quests:    ['Data', 'ID', 'Território', 'Título', 'Pergunta', 'Alternativas', 'Resposta correta'],
   Progresso: ['Data', 'Nome', 'Turma', 'Campanha', 'ID da campanha', 'Nível', 'XP', 'Ouro', 'Determinação', 'Inspiração', 'Encontros', 'Insígnias'],
   Feedback:  ['Data', 'Nome', 'Turma', 'Papel', 'Nota', 'Comentário', 'Escola'],
-  Campanha:  ['Data', 'Título', 'Prólogo', 'Capítulos'],
+  Campanha:  ['Data', 'ID', 'Nome', 'Turma', 'Título', 'Prólogo', 'Capítulos',
+              'Nível', 'Faixa etária', 'Checkpoints', 'Atualizada em'],
   Itens:     ['Data', 'Nome', 'Efeito', 'Valor', 'Preço', 'Descrição']
 };
 
@@ -67,7 +68,7 @@ function doPost(e) {
     var agora = corpo.data || new Date().toISOString();
 
     if (tipo === 'acesso') {
-      pegarAba('Acessos').appendRow([agora, d.nome || '', d.turma || '', d.papel || '']);
+      pegarAba('Acessos').appendRow([agora, d.nome || '', d.turma || '', d.papel || '', d.campanhaId || '']);
 
     } else if (tipo === 'quest') {
       var alternativas = (d.alternativas || [])
@@ -87,7 +88,10 @@ function doPost(e) {
 
     } else if (tipo === 'campanha') {
       pegarAba('Campanha').appendRow([
-        agora, d.titulo || '', d.prologo || '', JSON.stringify(d.capitulos || {})
+        agora, d.id || '', d.nome || '', d.turma || '',
+        d.titulo || '', d.prologo || '', JSON.stringify(d.capitulos || {}),
+        d.nivel || '', d.faixaEtaria || '',
+        JSON.stringify(d.checkpoints || []), d.atualizadaEm || agora
       ]);
 
     } else if (tipo === 'item') {
@@ -132,7 +136,8 @@ function doGet(e) {
       var porAluno = {};
       linhas.forEach(function (l) {
         var chave = (l[1] || '') + '|' + (l[2] || '');
-        porAluno[chave] = { nome: l[1] || '', turma: l[2] || '', acesso: formatarData(l[0]), papel: l[3] || '' };
+        porAluno[chave] = { nome: l[1] || '', turma: l[2] || '', acesso: formatarData(l[0]),
+                            papel: l[3] || '', campanhaId: l[4] || '' };
       });
       return responder(Object.keys(porAluno).map(function (k) { return porAluno[k]; }));
     }
@@ -148,6 +153,33 @@ function doGet(e) {
           return { data: formatarData(l[0]), nota: Number(l[4]),
                    texto: l[5], escola: l[6] || '' };
         }));
+    }
+
+    if (tipo === 'campanhas' || tipo === 'campanha') {
+      /* Uma linha por SALVAMENTO: a mesma campanha aparece várias vezes.
+         Guardamos só a última de cada ID — é o estado atual dela.
+         É isto que faz a campanha do professor chegar ao navegador do aluno. */
+      var porId = {};
+      lerLinhas('Campanha').forEach(function (l) {
+        var id = String(l[1] || '').trim();
+        /* Linhas gravadas antes desta versão têm o Título na coluna B, não o
+           ID. Exigir o formato "camp-<número>" descarta essas sobras sem
+           precisar limpar a aba à mão. */
+        if (!/^camp-\d+$/.test(id)) return;
+        porId[id] = {
+          id: id,
+          nome: l[2] || '',
+          turma: l[3] || '',
+          titulo: l[4] || '',
+          prologo: l[5] || '',
+          capitulos: decodificar(l[6], {}),
+          nivel: l[7] || '',
+          faixaEtaria: l[8] || '',
+          checkpoints: decodificar(l[9], []),
+          atualizadaEm: l[10] ? String(l[10]) : ''
+        };
+      });
+      return responder(Object.keys(porId).map(function (k) { return porId[k]; }));
     }
 
     if (tipo === 'quests') {
@@ -182,6 +214,12 @@ function lerLinhas(nomeAba) {
   var ultima = aba.getLastRow();
   if (ultima < 2) return [];
   return aba.getRange(2, 1, ultima - 1, aba.getLastColumn()).getValues();
+}
+
+/** JSON guardado em célula -> objeto. Célula vazia ou quebrada vira o padrão. */
+function decodificar(valor, padrao) {
+  if (valor === '' || valor === null || valor === undefined) return padrao;
+  try { return JSON.parse(String(valor)); } catch (erro) { return padrao; }
 }
 
 /** Converte a data para o formato brasileiro curto (dd/mm hh:mm). */
