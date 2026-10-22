@@ -116,8 +116,21 @@
       /* Busca as campanhas na planilha. É isto que faz a campanha criada no
          computador do professor aparecer no computador do aluno — antes, o
          seletor só enxergava o localStorage deste navegador. */
-      Campanhas.sincronizar().then(() => {
+      /* Distingue "o professor não publicou nada" de "a planilha não
+         respondeu". Para o aluno as duas davam o mesmo seletor vazio, e
+         ninguém sabia se era falta de campanha ou falta de internet. */
+      Campanhas.conferirPlanilha().then(lista => {
         alvo.disabled = false;
+
+        if (lista === null) {
+          desenharOpcoes();
+          document.getElementById('dica-campanha').innerHTML =
+            '<strong>Não foi possível falar com a planilha.</strong> '
+            + 'Confira a internet e recarregue a página (Ctrl+Shift+R).';
+          return;
+        }
+
+        Campanhas.mesclarDoServidor(lista);
         desenharOpcoes();
       });
     }
@@ -230,21 +243,31 @@
 
       // Registra o acesso na planilha do Google (evidência de uso — ver README.md).
       // Funciona em segundo plano; se o Sheets não estiver configurado, não trava o jogo.
-      registrarNoGoogleSheets('acesso', {
+      const registro = registrarNoGoogleSheets('acesso', {
         nome, turma, papel: papelSelecionado,
         // Sem isto o painel do professor não sabe a qual campanha o aluno entrou.
         campanhaId: campanha ? campanha.id : ''
       });
 
-      // Decide para onde mandar o usuário:
-      if (papelSelecionado === 'mestre') {
-        window.location.href = 'mestre.html';
-      } else {
+      /** Para onde o usuário vai depois de entrar. */
+      function seguir() {
+        if (papelSelecionado === 'mestre') {
+          window.location.href = 'mestre.html';
+          return;
+        }
         // Se o aluno já tem um personagem salvo, vai direto para o mapa;
         // senão, primeiro precisa criar o herói.
         const personagem = Estado.getPersonagem();
         window.location.href = personagem ? 'mapa.html' : 'personagem.html';
       }
+
+      /* Espera o registro, mas no máximo 1,5 s: o acesso é o que coloca o
+         aluno no elenco do professor, e trocar de tela antes do envio
+         terminar fazia a turma inteira faltar no painel. Se a rede estiver
+         lenta, o jogo segue — o keepalive do fetch termina o envio sozinho. */
+      Promise.race([registro, new Promise(ok => setTimeout(ok, 1500))])
+        .then(seguir, seguir);
+
       return false;
     }
   </script>

@@ -53,6 +53,15 @@
         <select id="campo-campanha-ativa" onchange="ativarCampanha(this.value)"></select>
       </div>
 
+      <!-- O professor não tem como saber, olhando a tela, se o aluno vai
+           encontrar a campanha. Este bloco pergunta à planilha e responde. -->
+      <div id="status-publicacao" class="status-publicacao">
+        <span id="status-publicacao-texto">Conferindo a planilha…</span>
+        <button type="button" class="btn btn-outline btn-publicar" onclick="publicarAtiva()">
+          Publicar agora
+        </button>
+      </div>
+
       <details class="bloco-dobravel" id="bloco-exemplo">
         <summary>Carregar uma aventura pronta</summary>
         <p style="font-size:0.84rem; color:var(--text-muted); margin:0.7rem 0 0.9rem; line-height:1.55;">
@@ -569,6 +578,7 @@
 
       mostrarAvisoCampanha(campanha.atualizadaEm);
       mostrarToast('História salva! Os alunos já veem no Códex.');
+      conferirPublicacao();
       return false;
     }
 
@@ -650,6 +660,7 @@
       montarCamposCapitulos();
       desenharElenco();
       mostrarToast('Campanha ativa alterada.');
+      conferirPublicacao();
     }
 
     /** Recarrega os editores depois de instalar uma aventura pronta. */
@@ -680,13 +691,24 @@
 
     function criarCampanha() {
       const nome = document.getElementById('campo-nova-campanha').value.trim();
+      const turma = document.getElementById('campo-nova-turma').value.trim();
+
       if (!nome) {
         mostrarToast('Dê um nome à campanha.');
         return;
       }
 
-      Campanhas.criar(nome, {
-        turma: document.getElementById('campo-nova-turma').value.trim(),
+      /* Sem turma não existe código de acesso: qualquer aluno entrava em
+         qualquer campanha e o elenco não casava com ninguém. É o campo que
+         liga a campanha à sala de aula, então é obrigatório. */
+      if (!turma) {
+        mostrarToast('Defina a turma — é o código que o aluno digita para entrar.');
+        document.getElementById('campo-nova-turma').focus();
+        return;
+      }
+
+      const campanha = Campanhas.criar(nome, {
+        turma,
         importarDe: document.getElementById('campo-importar-de').value || null,
         copiarTexto: document.getElementById('campo-copiar-texto').checked
       });
@@ -697,7 +719,78 @@
       desenharSelectsCampanha();
       montarCamposCapitulos();
       desenharElenco();
-      mostrarToast('Campanha criada e em uso.');
+      mostrarToast('Campanha criada. Código da turma: ' + campanha.turma);
+      conferirPublicacao();
+    }
+
+    /* ---------- Publicação ---------- */
+
+    /**
+     * Pergunta à planilha se a campanha em uso está publicada e mostra a
+     * resposta na tela. Sem isto, o professor só descobria o problema
+     * quando a turma inteira já estava na frente do computador.
+     */
+    function conferirPublicacao() {
+      const alvo = document.getElementById('status-publicacao-texto');
+      const bloco = document.getElementById('status-publicacao');
+      const campanha = Campanhas.ativa();
+
+      bloco.className = 'status-publicacao';
+      alvo.textContent = 'Conferindo a planilha…';
+
+      return Campanhas.conferirPlanilha().then(lista => {
+        if (lista === null) {
+          bloco.classList.add('erro');
+          alvo.innerHTML = '<strong>Planilha fora do ar.</strong> '
+            + 'O aluno não vai encontrar nenhuma campanha.';
+          return false;
+        }
+
+        if (!campanha) {
+          bloco.classList.add('erro');
+          alvo.textContent = 'Nenhuma campanha em uso. Crie uma abaixo.';
+          return false;
+        }
+
+        const vivas = lista.filter(c => c && !c.removida);
+        const publicada = vivas.some(c => c.id === campanha.id);
+
+        if (!publicada) {
+          bloco.classList.add('erro');
+          alvo.innerHTML = '<strong>Não publicada.</strong> '
+            + 'Esta campanha só existe neste computador — clique em Publicar agora.';
+          return false;
+        }
+
+        if (!campanha.turma) {
+          bloco.classList.add('aviso');
+          alvo.innerHTML = '<strong>Publicada, sem código de turma.</strong> '
+            + 'Qualquer aluno entra nela. Crie uma campanha nova com a turma preenchida.';
+          return true;
+        }
+
+        bloco.classList.add('ok');
+        alvo.innerHTML = 'Publicada. O aluno escolhe <strong>'
+          + escaparHTML(campanha.nome) + '</strong> e digita o código <strong>'
+          + escaparHTML(campanha.turma) + '</strong>. '
+          + vivas.length + ' campanha(s) na planilha.';
+        return true;
+      });
+    }
+
+    /** Reenvia a campanha em uso para a planilha e confere o resultado. */
+    function publicarAtiva() {
+      const campanha = Campanhas.ativa();
+      if (!campanha) { mostrarToast('Nenhuma campanha em uso.'); return; }
+
+      const alvo = document.getElementById('status-publicacao-texto');
+      alvo.textContent = 'Publicando…';
+
+      Campanhas.publicar(campanha).then(ok => {
+        mostrarToast(ok ? 'Campanha publicada e conferida na planilha.'
+                        : 'Não deu para confirmar. Veja a conexão e tente de novo.');
+        conferirPublicacao();
+      });
     }
 
     function apagarCampanha() {
@@ -709,7 +802,8 @@
       desenharSelectsCampanha();
       montarCamposCapitulos();
       desenharElenco();
-      mostrarToast('Campanha apagada.');
+      mostrarToast('Campanha apagada aqui e na planilha.');
+      conferirPublicacao();
     }
 
     /* ---------- Elenco ---------- */
@@ -897,21 +991,23 @@
     }
 
     montarSelectTerritorios();
-    desenharSelectsCampanha();
-    montarCamposCapitulos();
     montarCamposAbordagens();
-    desenharElenco();
     listarItensCriados();
 
-    /* Puxa da planilha o que foi criado/acessado em outros computadores:
-       as campanhas (caso o professor abra o painel em outra máquina) e os
-       alunos que entraram. Roda depois do desenho inicial para a tela não
-       ficar esperando a rede. */
-    Campanhas.sincronizar().then(() => {
-      desenharSelectsCampanha();
-      montarCamposCapitulos();
-      return sincronizarElenco();
-    });
+    /* A planilha vem PRIMEIRO, e isto é importante: desenhar antes de
+       sincronizar fazia idAtiva() não encontrar campanha nenhuma num
+       computador novo e inventar uma "Campanha 1" — que ia para a planilha
+       e aparecia no seletor do aluno como aventura fantasma. Lendo antes,
+       o painel acha as campanhas que já existem e não cria nada. */
+    Campanhas.sincronizar()
+      .catch(() => null)
+      .then(() => {
+        desenharSelectsCampanha();
+        montarCamposCapitulos();
+        desenharElenco();
+        conferirPublicacao();
+        return sincronizarElenco();
+      });
   </script>
 </body>
 </html>

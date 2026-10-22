@@ -1777,3 +1777,37 @@ tbody tr:hover td { background: rgba(255, 255, 255, 0.03); }
 @media (prefers-reduced-motion: reduce) {
   .sync-barra #sync-estado::before { animation: none; }
 }
+
+
+/* ==========================================================================
+   INDICADOR DE PUBLICAÇÃO (painel do mestre)
+   A campanha vive em dois lugares: neste navegador e na planilha. Só a
+   planilha chega ao aluno, então o professor precisa ver a diferença.
+   ========================================================================== */
+.status-publicacao {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 0.65rem 0.8rem;
+  margin: -0.4rem 0 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text-muted);
+}
+.status-publicacao strong { color: var(--text); }
+.status-publicacao.ok    { border-left-color: #3FA06A; }
+.status-publicacao.aviso { border-left-color: var(--accent); }
+.status-publicacao.erro  { border-left-color: var(--primary); }
+
+.btn-publicar {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding: 0.4rem 0.75rem;
+  letter-spacing: 0.06em;
+}

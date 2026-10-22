@@ -414,15 +414,32 @@ function registrarNoGoogleSheets(tipo, dados) {
     console.warn('[Elarion] Google Sheets não configurado ainda — registro apenas local.', tipo, dados);
     return Promise.resolve(false);
   }
+  /* O Apps Script devolve Access-Control-Allow-Origin: * nas respostas do
+     ContentService, então dá para LER o resultado — era isso que faltava:
+     com mode:'no-cors' o site jurava ter gravado mesmo quando falhava.
+     text/plain evita o preflight OPTIONS, que o Apps Script não trata bem.
+     Se a leitura falhar, NÃO reenviamos (duplicaria a linha): devolvemos
+     null, que significa "enviado, resultado desconhecido". Quem precisa de
+     certeza usa Campanhas.publicar(), que confere lendo a planilha. */
+  const corpo = JSON.stringify({ tipo, dados, data: new Date().toISOString() });
+
   return fetch(GOOGLE_SHEETS_URL, {
     method: 'POST',
-    mode: 'no-cors', // Apps Script normalmente não devolve CORS liberado; usamos no-cors e não lemos a resposta.
-    headers: { 'Content-Type': 'text/plain' }, // text/plain evita "preflight" OPTIONS que o Apps Script não trata bem.
-    body: JSON.stringify({ tipo, dados, data: new Date().toISOString() })
-  }).then(() => true).catch((erro) => {
-    console.error('[Elarion] Falha ao enviar para o Google Sheets:', erro);
-    return false;
-  });
+    headers: { 'Content-Type': 'text/plain' },
+    /* keepalive mantém o envio de pé mesmo se a página sair do ar no meio —
+       é o caso do login, que registra o acesso e troca de tela em seguida.
+       Sem isto o navegador cancelava o registro e o aluno não aparecia no
+       elenco do professor. O limite do keepalive é 64 KB; uma campanha
+       grande passa disso, e aí vai sem ele (ninguém navega ao salvar). */
+    keepalive: corpo.length < 60000,
+    body: corpo
+  })
+    .then(resposta => resposta.json())
+    .then(json => (json && json.ok === false ? false : true))
+    .catch(erro => {
+      console.warn('[Elarion] Enviado, mas sem confirmação de leitura:', erro);
+      return null;
+    });
 }
 
 /**
@@ -434,16 +451,25 @@ function registrarNoGoogleSheets(tipo, dados) {
  * @param {string} tipo - 'alunos' | 'quests' | 'acessos'
  * @returns {Promise<Array>}
  */
-function lerDoGoogleSheets(tipo) {
+function lerDoGoogleSheets(tipo, opcoes) {
+  const estrito = Boolean(opcoes && opcoes.estrito);
+
   if (!sheetsConfigurado()) {
     console.warn('[Elarion] Google Sheets nao configurado — leitura ignorada.', tipo);
+    if (estrito) return Promise.reject(new Error('planilha não configurada'));
     return Promise.resolve([]);
   }
   return fetch(GOOGLE_SHEETS_URL + '?tipo=' + encodeURIComponent(tipo))
-    .then(resposta => resposta.json())
+    .then(resposta => {
+      if (!resposta.ok) throw new Error('HTTP ' + resposta.status);
+      return resposta.json();
+    })
     .then(json => (Array.isArray(json) ? json : (json && json.dados) || []))
     .catch(erro => {
       console.error('[Elarion] Falha ao ler a planilha:', erro);
+      /* No modo estrito a falha SOBE. Devolver [] escondia a queda da
+         planilha atrás de "nenhuma campanha publicada". */
+      if (estrito) throw erro;
       return [];
     });
 }
@@ -636,7 +662,21 @@ const Campanhas = {
 
   /** Campanhas que aceitam novos alunos, para o seletor do login. */
   paraLogin() {
-    return this.lista().filter(c => c && c.id);
+    return this.lista().filter(c => c && c.id && !c.removida);
+  },
+
+  /**
+   * Quantas campanhas a planilha tem publicadas agora.
+   * Serve ao indicador de conexão do painel do mestre: é a única forma de
+   * o professor ver, sem abrir a planilha, que o aluno vai achar a campanha.
+   */
+  conferirPlanilha() {
+    /* Devolve a lista CRUA, com as removidas inclusive: quem chama precisa
+       delas para apagar a cópia local. null significa "não respondeu", que
+       é diferente de "respondeu vazio" — e a tela diz coisas diferentes. */
+    return lerDoGoogleSheets('campanhas', { estrito: true })
+      .then(lista => (Array.isArray(lista) ? lista : null))
+      .catch(() => null);
   },
 
   /**
@@ -669,6 +709,10 @@ const Campanhas = {
       // Local mais novo que o servidor: mantém o local (edição em andamento).
       if (local && (local.atualizadaEm || '') > (remota.atualizadaEm || '')) return;
 
+      /* Apagada no painel do professor: sai daqui também, em vez de
+         reaparecer no seletor do aluno a cada sincronização. */
+      if (remota.removida) { delete todas[remota.id]; return; }
+
       todas[remota.id] = Object.assign({}, local || {}, remota, {
         // O elenco local não vem da planilha; preserva o que já havia.
         jogadores: (local && local.jogadores) || [],
@@ -698,7 +742,10 @@ const Campanhas = {
       console.warn('[Elarion] Campanha antiga ilegível — começando do zero.', erro);
     }
 
-    const campanha = this.criar(base.titulo || 'Campanha 1', { base });
+    /* Local apenas. Esta campanha nasce de um navegador vazio, não de um
+       clique do professor — publicar aqui enchia a aba Campanha de
+       "Campanha 1" a cada vez que o painel abria numa máquina nova. */
+    const campanha = this.criar(base.titulo || 'Campanha 1', { base, publicar: false });
     localStorage.removeItem(this.CHAVE_ANTIGA);
     return campanha.id;
   },
@@ -750,8 +797,10 @@ const Campanhas = {
     this.definirAtiva(id);
     /* Publica já na criação. Antes, a campanha só ia para a planilha quando o
        professor salvava a história — se ele criasse a campanha e fosse dar
-       aula, o aluno não encontrava nada no seletor do login. */
-    registrarNoGoogleSheets('campanha', campanha);
+       aula, o aluno não encontrava nada no seletor do login.
+       A migração passa publicar:false: campanha que o professor não pediu
+       não vai para a planilha (era a origem das "Campanha 1" fantasmas). */
+    if (opcoes.publicar !== false) registrarNoGoogleSheets('campanha', campanha);
     return campanha;
   },
 
@@ -775,15 +824,47 @@ const Campanhas = {
     return campanha;
   },
 
-  /** Apaga a campanha. As fichas dos alunos continuam intactas. */
+  /**
+   * Publica a campanha na planilha e CONFERE lendo de volta.
+   *
+   * O POST sozinho não serve de prova: a resposta pode não chegar, e o
+   * professor ficava sem saber se o aluno ia encontrar a campanha. Aqui
+   * gravamos e perguntamos à planilha se o id realmente está lá.
+   *
+   * @returns {Promise<boolean>} true se a planilha confirmou
+   */
+  publicar(campanha) {
+    if (!campanha || !campanha.id) return Promise.resolve(false);
+    return registrarNoGoogleSheets('campanha', campanha)
+      .then(() => lerDoGoogleSheets('campanhas'))
+      .then(lista => Array.isArray(lista)
+        && lista.some(c => c && c.id === campanha.id && !c.removida))
+      .catch(() => false);
+  },
+
+  /**
+   * Apaga a campanha aqui e avisa a planilha.
+   *
+   * Sem o aviso, a campanha voltava na próxima sincronização: a aba
+   * Campanha é um histórico, e apagar só no navegador não apaga o
+   * registro de lá.
+   */
   remover(id) {
     const todas = this.todas();
+    const campanha = todas[id];
     delete todas[id];
     this.gravarTodas(todas);
 
+    if (campanha) {
+      registrarNoGoogleSheets('campanha', Object.assign({}, campanha, {
+        removida: true,
+        atualizadaEm: new Date().toISOString()
+      }));
+    }
+
     if (localStorage.getItem(this.CHAVE_ATIVA) === id) {
       localStorage.removeItem(this.CHAVE_ATIVA);
-      this.idAtiva(); // elege outra (ou cria uma nova)
+      this.idAtiva(); // elege outra (ou cria uma nova, só local)
     }
   },
 
