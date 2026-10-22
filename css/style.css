@@ -1811,3 +1811,11 @@ tbody tr:hover td { background: rgba(255, 255, 255, 0.03); }
   padding: 0.4rem 0.75rem;
   letter-spacing: 0.06em;
 }
+
+/* Campo com botão colado ao lado (código da turma). */
+.linha-campo-botao {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.linha-campo-botao input { flex: 1; min-width: 0; }

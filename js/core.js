@@ -1168,6 +1168,52 @@ function heroisLocais(campanhaId) {
  * Quem está matriculado mas ainda não criou herói aparece como 'semFicha',
  * para o professor ver que o aluno entrou e parou ali.
  */
+/**
+ * Junta o elenco local com os alunos da aba Acessos.
+ *
+ * O elenco do localStorage só conhece quem entrou NESTE navegador. Numa
+ * sala de aula cada aluno entra no computador dele, então sem a planilha
+ * o professor via "elenco vazio" com a turma inteira jogando na frente
+ * dele. Esta função é a fonte única da verdade: a Mesa ao Vivo e o painel
+ * usam a mesma, para não divergirem de novo.
+ *
+ * @param {string} campanhaId
+ * @param {Array} alunos - linhas de lerDoGoogleSheets('alunos')
+ * @returns {Array} linhas do elenco, sem repetir ninguém
+ */
+function mesclarElencoComAcessos(campanhaId, alunos) {
+  const linhas = elencoDaCampanha(campanhaId);
+  const vistos = {};
+  linhas.forEach(l => { vistos[l.chave] = true; });
+
+  const campanha = Campanhas.get(campanhaId) || {};
+  const turma = (campanha.turma || '').toLowerCase();
+
+  (Array.isArray(alunos) ? alunos : [])
+    .filter(a => a && a.papel === 'aluno')
+    /* Com id de campanha, casa pelo id. Acessos antigos não têm id: aí o
+       código da turma decide — é para isso que ele existe. */
+    .filter(a => (a.campanhaId ? a.campanhaId === campanhaId
+                               : turma && (a.turma || '').toLowerCase() === turma))
+    .forEach(a => {
+      const chave = (a.nome + '|' + a.turma).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      if (vistos[chave]) return;
+      vistos[chave] = true;
+      // Sem ficha aqui: o personagem dele está no navegador DELE.
+      linhas.push({ chave, jogador: { nome: a.nome, turma: a.turma },
+                    personagem: null, semFicha: true });
+    });
+
+  return linhas;
+}
+
+/** Igual ao anterior, mas buscando os acessos na planilha. */
+function elencoComPlanilha(campanhaId) {
+  return lerDoGoogleSheets('alunos')
+    .then(lista => mesclarElencoComAcessos(campanhaId, lista))
+    .catch(() => elencoDaCampanha(campanhaId));
+}
+
 function elencoDaCampanha(campanhaId) {
   const id = campanhaId || Campanhas.idAtiva();
   const campanha = Campanhas.get(id);

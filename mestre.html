@@ -53,6 +53,19 @@
         <select id="campo-campanha-ativa" onchange="ativarCampanha(this.value)"></select>
       </div>
 
+      <!-- As aventuras prontas entram sem turma, e campanha sem turma aceita
+           qualquer código. Aqui o professor define (ou corrige) o código de
+           acesso da campanha em uso, sem precisar criar outra. -->
+      <div class="form-group">
+        <label for="campo-turma-ativa">Código da turma</label>
+        <div class="linha-campo-botao">
+          <input type="text" id="campo-turma-ativa" placeholder="Ex: 7A-2026">
+          <button type="button" class="btn btn-outline btn-publicar" onclick="salvarTurmaAtiva()">
+            Salvar
+          </button>
+        </div>
+      </div>
+
       <!-- O professor não tem como saber, olhando a tela, se o aluno vai
            encontrar a campanha. Este bloco pergunta à planilha e responde. -->
       <div id="status-publicacao" class="status-publicacao">
@@ -649,6 +662,9 @@
         </option>`;
       }).join('');
 
+      const emUso = Campanhas.get(ativa);
+      document.getElementById('campo-turma-ativa').value = (emUso && emUso.turma) || '';
+
       document.getElementById('campo-importar-de').innerHTML =
         '<option value="">Começar sem elenco</option>'
         + lista.map(c => `<option value="${c.id}">${escaparHTML(c.nome)} (${(c.jogadores || []).length} aluno(s))</option>`).join('');
@@ -720,6 +736,25 @@
       montarCamposCapitulos();
       desenharElenco();
       mostrarToast('Campanha criada. Código da turma: ' + campanha.turma);
+      conferirPublicacao();
+    }
+
+    /** Define o código de acesso da campanha em uso e republica. */
+    function salvarTurmaAtiva() {
+      const campanha = Campanhas.ativa();
+      if (!campanha) { mostrarToast('Nenhuma campanha em uso.'); return; }
+
+      const turma = document.getElementById('campo-turma-ativa').value.trim();
+      if (!turma) {
+        mostrarToast('Escreva o código que o aluno vai digitar.');
+        document.getElementById('campo-turma-ativa').focus();
+        return;
+      }
+
+      Campanhas.salvar(Object.assign({}, campanha, { turma }));
+      desenharSelectsCampanha();
+      desenharElenco();
+      mostrarToast('Código da turma: ' + turma);
       conferirPublicacao();
     }
 
@@ -827,26 +862,9 @@
      * local, sem repetir ninguém. A chave é a mesma da ficha (nome|turma).
      */
     function elencoCompleto() {
-      const linhas = elencoDaCampanha();
-      const vistos = {};
-      linhas.forEach(l => { vistos[l.chave] = true; });
-
-      const campanha = Campanhas.ativa() || {};
-      const turma = (campanha.turma || '').toLowerCase();
-
-      alunosDaPlanilha
-        .filter(a => a && a.papel === 'aluno')
-        .filter(a => (a.campanhaId ? a.campanhaId === campanha.id
-                                   : turma && (a.turma || '').toLowerCase() === turma))
-        .forEach(a => {
-          const chave = (a.nome + '|' + a.turma).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          if (vistos[chave]) return;
-          vistos[chave] = true;
-          // Sem ficha aqui: o personagem dele está no navegador DELE.
-          linhas.push({ chave, jogador: { nome: a.nome, turma: a.turma }, personagem: null, semFicha: true });
-        });
-
-      return linhas;
+      /* A regra mora em core.js, usada também pela Mesa ao Vivo: duas
+         cópias da mesma lógica já fizeram as duas telas discordarem. */
+      return mesclarElencoComAcessos(Campanhas.idAtiva(), alunosDaPlanilha);
     }
 
     /** Uma linha por aluno, com checkbox para as ações em massa. */

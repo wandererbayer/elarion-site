@@ -215,7 +215,15 @@
       if (!silencioso) desenhaListaHerois('elenco da campanha');
       desenharFeitos();
 
-      return lerDoGoogleSheets('progresso').then(linhas => {
+      /* O elenco tem de vir da aba Acessos, não só deste navegador: os
+         alunos entram nos computadores deles, e a mesa mostrava "elenco
+         vazio" com a turma inteira jogando. */
+      return elencoComPlanilha(campanhaId).then(linhas => {
+        herois = linhas;
+        desenhaListaHerois('elenco + acessos');
+        desenharFeitos();
+        return lerDoGoogleSheets('progresso');
+      }).then(linhas => {
         if (!linhas.length) {
           if (silencioso) desenhaListaHerois('elenco da campanha');
           return;
